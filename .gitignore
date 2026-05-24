@@ -1,0 +1,13 @@
+# ユーザーデータ
+gallery.db
+*.log
+*.jsonl
+.secret_key
+
+# Python
+__pycache__/
+*.pyc
+
+# Windows
+Thumbs.db
+desktop.ini

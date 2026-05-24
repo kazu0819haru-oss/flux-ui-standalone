@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>FLUX UI — 起動中</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;900&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+    :root{
+      --bg:#070707;
+      --accent:#bef264;
+      --accent-glow:rgba(190,242,100,.35);
+      --accent-dim:rgba(190,242,100,.12);
+      --text:rgba(255,255,255,.85);
+      --text2:rgba(255,255,255,.4);
+      --text3:rgba(255,255,255,.18);
+    }
+
+    html,body{
+      width:100%;height:100%;
+      background:var(--bg);
+      color:var(--text);
+      font-family:'Outfit',sans-serif;
+      overflow:hidden;
+      user-select:none;
+    }
+
+    /* subtle radial gradient behind the logo */
+    .bg-bloom{
+      position:fixed;top:50%;left:50%;
+      width:700px;height:700px;
+      transform:translate(-50%,-50%);
+      background:radial-gradient(circle,rgba(190,242,100,.055) 0%,transparent 68%);
+      pointer-events:none;
+      animation:bloom 5s ease-in-out infinite;
+    }
+    @keyframes bloom{
+      0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.7}
+      50%{transform:translate(-50%,-50%) scale(1.15);opacity:1}
+    }
+
+    /* tiny grid dots in bg */
+    .bg-dots{
+      position:fixed;inset:0;
+      background-image:radial-gradient(circle,rgba(255,255,255,.04) 1px,transparent 1px);
+      background-size:32px 32px;
+      pointer-events:none;
+      mask-image:radial-gradient(ellipse 60% 60% at 50% 50%,black 0%,transparent 100%);
+    }
+
+    /* ── Center Stage ─────────────────────────────────── */
+    .stage{
+      position:fixed;top:50%;left:50%;
+      transform:translate(-50%,-50%);
+      display:flex;flex-direction:column;
+      align-items:center;gap:2.8rem;
+    }
+
+    /* ── Orbital Rings ────────────────────────────────── */
+    .orbital{
+      position:relative;
+      width:220px;height:220px;
+    }
+    .orbital svg{
+      width:100%;height:100%;
+      overflow:visible;
+    }
+
+    .r1{animation:spin 10s linear infinite;transform-origin:50% 50%}
+    .r2{animation:spin 6.5s linear infinite reverse;transform-origin:50% 50%}
+    .r3{animation:spin 16s linear infinite;transform-origin:50% 50%}
+
+    @keyframes spin{
+      from{transform:rotate(0deg)}
+      to{transform:rotate(360deg)}
+    }
+
+    /* Logo inside the rings */
+    .logo-wrap{
+      position:absolute;inset:0;
+      display:flex;align-items:center;justify-content:center;
+    }
+    .logo{
+      font-size:2.6rem;font-weight:900;
+      letter-spacing:-.05em;line-height:1;
+      color:#fff;
+    }
+    .logo .dot{
+      color:var(--accent);
+      text-shadow:0 0 20px var(--accent-glow);
+    }
+
+    /* ── Progress Track ───────────────────────────────── */
+    .prog-wrap{
+      width:260px;
+      display:flex;flex-direction:column;gap:.75rem;
+    }
+    .prog-track{
+      width:100%;height:2px;
+      background:rgba(255,255,255,.07);
+      border-radius:99px;overflow:hidden;
+      position:relative;
+    }
+    .prog-fill{
+      height:100%;width:0%;
+      background:var(--accent);
+      border-radius:99px;
+      box-shadow:0 0 14px var(--accent-glow);
+      transition:width .7s cubic-bezier(.4,0,.2,1);
+      position:relative;
+    }
+    /* shimmer on fill */
+    .prog-fill::after{
+      content:'';
+      position:absolute;right:0;top:0;
+      width:40px;height:100%;
+      background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);
+      animation:shimmer 1.5s ease-in-out infinite;
+    }
+    @keyframes shimmer{
+      0%{opacity:0;transform:translateX(-20px)}
+      50%{opacity:1}
+      100%{opacity:0;transform:translateX(20px)}
+    }
+
+    /* ── Status Text ──────────────────────────────────── */
+    .status-block{
+      text-align:center;
+      display:flex;flex-direction:column;
+      align-items:center;gap:.4rem;
+    }
+    .status{
+      font-size:.73rem;
+      font-weight:400;
+      letter-spacing:.14em;
+      color:var(--text2);
+      text-transform:uppercase;
+      display:flex;align-items:center;gap:.5rem;
+    }
+    .dots-wrap{
+      display:inline-flex;gap:.22rem;align-items:center;
+    }
+    .d{
+      width:3px;height:3px;border-radius:50%;
+      background:var(--accent);
+      opacity:.3;
+      animation:blink 1.4s ease-in-out infinite;
+    }
+    .d:nth-child(2){animation-delay:.2s}
+    .d:nth-child(3){animation-delay:.4s}
+    @keyframes blink{
+      0%,80%,100%{opacity:.2;transform:scale(.7)}
+      40%{opacity:1;transform:scale(1)}
+    }
+    .sub{
+      font-size:.65rem;
+      color:var(--text3);
+      letter-spacing:.06em;
+    }
+
+    /* ── Ready State ──────────────────────────────────── */
+    .stage.ready .logo{
+      text-shadow:0 0 40px var(--accent-glow);
+    }
+    .stage.ready .status{
+      color:var(--accent);
+    }
+    .stage.ready .d{
+      background:var(--accent);
+      opacity:1;
+      animation:none;
+    }
+
+    /* ── Fade out ─────────────────────────────────────── */
+    body.bye{
+      animation:fadeOut .45s ease forwards;
+    }
+    @keyframes fadeOut{
+      to{opacity:0;filter:blur(8px)}
+    }
+
+    /* ── Corner version tag ───────────────────────────── */
+    .corner{
+      position:fixed;bottom:1.5rem;left:1.5rem;
+      font-size:.6rem;letter-spacing:.1em;
+      color:var(--text3);text-transform:uppercase;
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-bloom"></div>
+<div class="bg-dots"></div>
+
+<div class="stage" id="stage">
+
+  <!-- Orbital rings + logo -->
+  <div class="orbital">
+    <svg viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+
+      <!-- Outer ring: dashed, faint -->
+      <circle class="r1" cx="110" cy="110" r="102"
+        stroke="rgba(190,242,100,.13)" stroke-width="1"
+        stroke-dasharray="7 7"/>
+      <!-- Accent dot on outer ring -->
+      <circle class="r1" cx="212" cy="110" r="3.5"
+        fill="rgba(190,242,100,.7)"
+        filter="url(#glow)"/>
+
+      <!-- Mid ring: faster reverse -->
+      <circle class="r2" cx="110" cy="110" r="80"
+        stroke="rgba(190,242,100,.2)" stroke-width="1"
+        stroke-dasharray="3 11"/>
+      <!-- Two dots on mid ring -->
+      <circle class="r2" cx="190" cy="110" r="2.5"
+        fill="rgba(190,242,100,.5)"/>
+      <circle class="r2" cx="30" cy="110" r="2"
+        fill="rgba(190,242,100,.3)"/>
+
+      <!-- Inner ring: slow, very faint -->
+      <circle class="r3" cx="110" cy="110" r="57"
+        stroke="rgba(255,255,255,.06)" stroke-width="1"
+        stroke-dasharray="2 9"/>
+
+      <!-- Glow filter for dots -->
+      <defs>
+        <filter id="glow" x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+    </svg>
+
+    <div class="logo-wrap">
+      <div class="logo">FLUX<span class="dot">.</span></div>
+    </div>
+  </div>
+
+  <!-- Progress bar -->
+  <div class="prog-wrap">
+    <div class="prog-track">
+      <div class="prog-fill" id="prog"></div>
+    </div>
+
+    <!-- Status text -->
+    <div class="status-block">
+      <div class="status" id="status">
+        <span id="statusText">起動しています</span>
+        <span class="dots-wrap" id="dotsWrap">
+          <span class="d"></span><span class="d"></span><span class="d"></span>
+        </span>
+      </div>
+      <div class="sub" id="sub">サーバーの準備を待っています</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="corner">FLUX UI</div>
+
+<script>
+  const progEl   = document.getElementById('prog');
+  const statusEl = document.getElementById('statusText');
+  const subEl    = document.getElementById('sub');
+  const stageEl  = document.getElementById('stage');
+  const dotsEl   = document.getElementById('dotsWrap');
+
+  let elapsed  = 0;   // seconds since page load
+  let comfySec = 0;   // seconds waiting for ComfyUI
+  let phase    = 'flask'; // 'flask' | 'comfy' | 'done'
+  let done     = false;
+
+  function fmt(s) {
+    const m = String(Math.floor(s / 60)).padStart(2,'0');
+    const sec = String(s % 60).padStart(2,'0');
+    return m + ':' + sec;
+  }
+
+  function setUI(text, sub, prog) {
+    statusEl.textContent = text;
+    subEl.textContent    = sub;
+    if (prog !== undefined) progEl.style.width = prog + '%';
+  }
+
+  function updateComfyProgress() {
+    // Fake progress: saturates toward 90% over ~5 min
+    const pct = Math.min(90, Math.round(90 * (1 - Math.exp(-comfySec / 150))));
+    progEl.style.width = (10 + pct * 0.8) + '%';
+
+    let sub;
+    if      (comfySec < 20)  sub = 'モデルファイルを読み込んでいます...';
+    else if (comfySec < 60)  sub = 'GPU メモリに展開しています...';
+    else if (comfySec < 120) sub = 'ワークフローを初期化しています...';
+    else                     sub = 'もう少しお待ちください...';
+
+    setUI('ComfyUI 起動中  ' + fmt(comfySec), sub);
+  }
+
+  function doRedirect() {
+    if (done) return;
+    done = true;
+    phase = 'done';
+    stageEl.classList.add('ready');
+    statusEl.textContent = '起動完了！';
+    dotsEl.style.display = 'none';
+    subEl.textContent    = 'FLUX UI へ移動します...';
+    progEl.style.width   = '100%';
+    setTimeout(() => {
+      document.body.classList.add('bye');
+      setTimeout(() => { window.location.href = '/'; }, 450);
+    }, 700);
+  }
+
+  // Phase 1: wait for Flask (/api/ping — responds instantly)
+  async function waitFlask() {
+    setUI('Flask 起動中', 'サーバーを準備しています...', 4);
+    while (true) {
+      try {
+        await fetch('/api/ping', { cache: 'no-store', signal: AbortSignal.timeout(2000) });
+        break; // Flask is up
+      } catch {}
+      await new Promise(r => setTimeout(r, 500));
+    }
+    setUI('ComfyUI 起動中  00:00', 'モデルファイルを読み込んでいます...', 10);
+    phase = 'comfy';
+    waitComfy();
+  }
+
+  // Phase 2: wait for ComfyUI (/api/health — returns 200 only when ComfyUI is ready)
+  async function waitComfy() {
+    while (true) {
+      try {
+        // health endpoint waits up to 3s for ComfyUI, so give 5s timeout
+        const res = await fetch('/api/health', { cache: 'no-store', signal: AbortSignal.timeout(5000) });
+        if (res.ok) { doRedirect(); return; }
+      } catch {}
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  }
+
+  // Tick every second
+  setInterval(() => {
+    elapsed++;
+    if (phase === 'comfy') {
+      comfySec++;
+      updateComfyProgress();
+    }
+  }, 1000);
+
+  // Keep Flask alive while waiting (same as main app)
+  setInterval(() => fetch('/api/keepalive', { method: 'POST' }).catch(() => {}), 8000);
+
+  waitFlask();
+</script>
+</body>
+</html>

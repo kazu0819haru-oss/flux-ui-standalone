@@ -1,0 +1,5 @@
+{
+  "comfyui_dir": "C:\\AI\\ComfyUI",
+  "comfyui_python": "C:\\AI\\ComfyUI\\.venv\\Scripts\\python.exe",
+  "flask_port": 5000
+}

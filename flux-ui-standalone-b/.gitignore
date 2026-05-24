@@ -1,0 +1,22 @@
+# ユーザーデータ・ログ
+gallery.db
+*.log
+*.jsonl
+.secret_key
+
+# Python キャッシュ
+__pycache__/
+*.pyc
+*.pyo
+
+# PyInstaller ビルド
+build/
+dist/
+*.spec
+
+# スクリーンショット（サイズ削減のため除外）
+docs/screenshots/
+
+# Windows
+Thumbs.db
+desktop.ini

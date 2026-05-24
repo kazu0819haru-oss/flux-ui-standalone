@@ -1,0 +1,17 @@
+# ユーザーデータ・ログ
+gallery.db
+*.log
+*.jsonl
+.secret_key
+
+# Python キャッシュ
+__pycache__/
+*.pyc
+*.pyo
+
+# スクリーンショット
+docs/screenshots/
+
+# Windows
+Thumbs.db
+desktop.ini
