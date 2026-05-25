@@ -344,6 +344,11 @@ def _shrink_for_flux(img_bytes: bytes):
     return buf.getvalue(), new_w, new_h, True
 
 
+def _wf_path(name):
+    """Convert forward slashes to OS separator so ComfyUI accepts subfolder paths."""
+    return name.replace('/', os.sep) if name else name
+
+
 def _resolve_base_model(model_name=None):
     if model_name and _is_visible_base_model(model_name):
         if _model_file_exists(KONTEXT_MODEL_DIR, model_name) or _model_file_exists(r"C:\AI\ComfyUI\models\unet", model_name):
@@ -500,7 +505,7 @@ def build_flux2_workflow(prompt, width, height, steps, seed, batch_size=1,
         "11": {"class_type": "CLIPLoader",
                "inputs": {"clip_name": _flux2_clip_name(), "type": "flux2", "device": "default"}},
         "12": {"class_type": "UNETLoader",
-               "inputs": {"unet_name": model_name or FLUX2_CONFIG["unet"], "weight_dtype": "default"}},
+               "inputs": {"unet_name": _wf_path(model_name or FLUX2_CONFIG["unet"]), "weight_dtype": "default"}},
         "6": {"class_type": "CLIPTextEncode",
               "inputs": {"text": prompt, "clip": ["11", 0]}},
         "26": {"class_type": "FluxGuidance",
