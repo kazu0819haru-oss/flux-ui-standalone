@@ -4,7 +4,9 @@ Set fso = CreateObject("Scripting.FileSystemObject")
 ' このファイルのあるフォルダを取得
 ScriptDir = fso.GetParentFolderName(WScript.ScriptFullName)
 
-' 起動.bat を非表示で実行
-WshShell.Run "cmd /c """ & ScriptDir & "\起動.bat""", 0, False
+' パスにスペースが含まれても動くよう Chr(34) でクォートを組み立てる
+q = Chr(34)
+WshShell.CurrentDirectory = ScriptDir
+WshShell.Run "cmd /c " & q & q & ScriptDir & "\起動.bat" & q & q, 0, False
 
 WScript.Quit
