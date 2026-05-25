@@ -4104,7 +4104,9 @@ async function runWan22FromPrompt(promptVal){
   const length=parseInt(document.getElementById('wan22Length')?.value||'81');
   const fps=parseInt(document.getElementById('wan22Fps')?.value||'16');
   const [_resW,_resH]=_wan22Dims();
-  const ph=addPh(_resW, _resH, `Wan2.2 ${_wan22Quality.toUpperCase()} 動画生成中...`);
+  const count=Math.max(1,S.batch||1);
+  const phs=addPhs(_resW, _resH, `Wan2.2 ${_wan22Quality.toUpperCase()} 動画生成中...`, count);
+  const baseSeed=+document.getElementById('seedIn').value||-1;
 
   let startUploaded, endUploaded;
   try{
@@ -4118,44 +4120,49 @@ async function runWan22FromPrompt(promptVal){
       if(!r2.ok) throw new Error('終了フレームアップロード失敗');
       endUploaded=await r2.json();
     }
-  }catch(e){ _wan22Submitting=false; ph?.remove(); updateQueueUI(); toast('アップロード失敗: '+e.message); return; }
-  try{
-    const body={
-      prompt:promptVal||'',
-      steps:S.steps,
-      width:_resW,
-      height:_resH,
-      length, frame_rate:fps,
-      quality:_wan22Quality,
-      start_filename:startUploaded.name,
-      start_subfolder:startUploaded.subfolder||'',
-      start_type:'input',
-    };
-    if(endUploaded){
-      body.end_filename=endUploaded.name;
-      body.end_subfolder=endUploaded.subfolder||'';
-      body.end_type='input';
-    }
-    const d=await api('/api/wan22/generate',{method:'POST',body});
-    if(d.error) throw new Error(d.error);
-    S.lastSeed=d.seed;
-    startWS(d.client_id, ph);
-    trackJob(d.prompt_id, ph, (items, elapsed)=>{
-      items.forEach((item, i)=>{
-        const url=imgURL(item);
-        const stored={url, filename:item.filename, subfolder:item.subfolder||'',
-          type:item.type||'output', isVideo:!!item.isVideo,
-          prompt:promptVal||'', seed:d.seed,
-          w:_resW, h:_resH,
-          steps:S.steps, ts:Date.now(), autoTags:['wan2.2','i2v',_wan22Quality]};
-        prependImg(stored, i===0?ph:null);
-      });
-      if(!items.length) ph?.remove();
-      updateQueueUI();
-      setStatus('Wan2.2完了 '+fmtSec(elapsed));
-    }, e=>{ ph?.remove(); updateQueueUI(); toast(e||'Wan2.2生成エラー'); });
-    _wan22Submitting=false;
-  }catch(e){ _wan22Submitting=false; ph?.remove(); updateQueueUI(); toast(e.message||'Wan2.2生成エラー'); }
+  }catch(e){ _wan22Submitting=false; phs.forEach(p=>p?.remove()); updateQueueUI(); toast('アップロード失敗: '+e.message); return; }
+
+  const baseBody={
+    prompt:promptVal||'',
+    steps:S.steps,
+    width:_resW,
+    height:_resH,
+    length, frame_rate:fps,
+    quality:_wan22Quality,
+    start_filename:startUploaded.name,
+    start_subfolder:startUploaded.subfolder||'',
+    start_type:'input',
+  };
+  if(endUploaded){
+    baseBody.end_filename=endUploaded.name;
+    baseBody.end_subfolder=endUploaded.subfolder||'';
+    baseBody.end_type='input';
+  }
+  for(let i=0;i<count;i++){
+    const ph=phs[i];
+    try{
+      const seed=baseSeed>0 ? baseSeed+i : -1;
+      const d=await api('/api/wan22/generate',{method:'POST',body:{...baseBody, seed}});
+      if(d.error) throw new Error(d.error);
+      if(i===0) S.lastSeed=d.seed;
+      startWS(d.client_id, ph);
+      trackJob(d.prompt_id, ph, (items, elapsed)=>{
+        items.forEach((item, j)=>{
+          const url=imgURL(item);
+          const stored={url, filename:item.filename, subfolder:item.subfolder||'',
+            type:item.type||'output', isVideo:!!item.isVideo,
+            prompt:promptVal||'', seed:d.seed,
+            w:_resW, h:_resH,
+            steps:S.steps, ts:Date.now(), autoTags:['wan2.2','i2v',_wan22Quality]};
+          prependImg(stored, j===0?ph:null);
+        });
+        if(!items.length) ph?.remove();
+        updateQueueUI();
+        setStatus('Wan2.2完了 '+fmtSec(elapsed));
+      }, e=>{ ph?.remove(); updateQueueUI(); toast(e||'Wan2.2生成エラー'); });
+    }catch(e){ ph?.remove(); updateQueueUI(); toast(e.message||'Wan2.2生成エラー'); }
+  }
+  _wan22Submitting=false;
 }
 
 async function runKontextFromPrompt(instruction) {
