@@ -66,7 +66,7 @@ def save_config(cfg):
 
 
 def find_python(comfy_dir):
-    """ComfyUI .venv の Python を探す。なければシステム Python。"""
+    """ComfyUI の Python を探す。.venv → python_embeded → システム Python の順。"""
     candidates = [
         os.path.join(comfy_dir, ".venv", "Scripts", "python.exe"),
         os.path.join(comfy_dir, "python_embeded", "python.exe"),
@@ -74,7 +74,22 @@ def find_python(comfy_dir):
     for c in candidates:
         if os.path.isfile(c):
             return c
-    return sys.executable
+    # システム Python を where コマンドで探す
+    try:
+        result = subprocess.run(
+            ["where", "python"], capture_output=True, text=True, timeout=5
+        )
+        if result.returncode == 0:
+            for line in result.stdout.strip().splitlines():
+                p = line.strip()
+                # Windows Store のスタブ (WindowsApps) は除外
+                if p and os.path.isfile(p) and "WindowsApps" not in p:
+                    return p
+    except Exception:
+        pass
+    if not getattr(sys, 'frozen', False):
+        return sys.executable
+    return ""
 
 
 def port_open(port):
@@ -90,7 +105,7 @@ def show_setup_wizard():
     """tkinter でセットアップウィザードを表示し、設定 dict を返す。"""
     try:
         import tkinter as tk
-        from tkinter import filedialog, messagebox
+        from tkinter import filedialog
     except ImportError:
         show_error("エラー", "tkinter が利用できません。config.json を直接編集してください。")
         return None
@@ -107,41 +122,75 @@ def show_setup_wizard():
     ACC  = "#bef264"
     BG2  = "#252525"
     FONT = ("Segoe UI", 10)
+    FONT_S = ("Segoe UI", 8)
 
     root.update_idletasks()
-    w, h = 500, 300
+    w, h = 520, 380
     x = (root.winfo_screenwidth()  - w) // 2
     y = (root.winfo_screenheight() - h) // 2
     root.geometry(f"{w}x{h}+{x}+{y}")
 
     tk.Label(root, text="FLUX UI セットアップ", bg=BG, fg=ACC,
-             font=("Segoe UI", 14, "bold")).pack(pady=(20, 4))
-    tk.Label(root, text="ComfyUI がインストールされているフォルダを指定してください。",
-             bg=BG, fg=FG, font=FONT).pack(pady=(0, 16))
+             font=("Segoe UI", 14, "bold")).pack(pady=(18, 2))
+    tk.Label(root, text="ComfyUI フォルダと Python を指定してください。",
+             bg=BG, fg=FG, font=FONT).pack(pady=(0, 12))
 
     frame = tk.Frame(root, bg=BG)
     frame.pack(fill="x", padx=30)
 
+    # --- ComfyUI フォルダ ---
     tk.Label(frame, text="ComfyUI フォルダ:", bg=BG, fg=FG, font=FONT,
              anchor="w").pack(fill="x")
-
-    row = tk.Frame(frame, bg=BG)
-    row.pack(fill="x", pady=(4, 0))
+    row1 = tk.Frame(frame, bg=BG)
+    row1.pack(fill="x", pady=(4, 0))
 
     path_var = tk.StringVar(value=r"C:\AI\ComfyUI")
-    entry = tk.Entry(row, textvariable=path_var, bg=BG2, fg=FG,
-                     insertbackground=FG, relief="flat", font=FONT, bd=4)
-    entry.pack(side="left", fill="x", expand=True)
+    entry1 = tk.Entry(row1, textvariable=path_var, bg=BG2, fg=FG,
+                      insertbackground=FG, relief="flat", font=FONT, bd=4)
+    entry1.pack(side="left", fill="x", expand=True)
 
-    def browse():
+    def browse_comfy():
         d = filedialog.askdirectory(title="ComfyUI フォルダを選択")
         if d:
-            path_var.set(d.replace("/", "\\"))
+            d = d.replace("/", "\\")
+            path_var.set(d)
+            py = find_python(d)
+            if py:
+                py_var.set(py)
 
-    tk.Button(row, text="参照...", bg=BG2, fg=FG, relief="flat",
-              font=FONT, cursor="hand2", command=browse,
+    tk.Button(row1, text="参照...", bg=BG2, fg=FG, relief="flat",
+              font=FONT, cursor="hand2", command=browse_comfy,
               activebackground="#333", activeforeground=FG,
               bd=0, padx=8).pack(side="left", padx=(6, 0))
+
+    # --- Python パス ---
+    tk.Label(frame, text="Python (python.exe):", bg=BG, fg=FG, font=FONT,
+             anchor="w").pack(fill="x", pady=(14, 0))
+
+    py_var = tk.StringVar(value=find_python(path_var.get()) or "")
+    row2 = tk.Frame(frame, bg=BG)
+    row2.pack(fill="x", pady=(4, 0))
+
+    entry2 = tk.Entry(row2, textvariable=py_var, bg=BG2, fg=FG,
+                      insertbackground=FG, relief="flat", font=FONT, bd=4)
+    entry2.pack(side="left", fill="x", expand=True)
+
+    def browse_python():
+        p = filedialog.askopenfilename(
+            title="python.exe を選択",
+            filetypes=[("Python", "python.exe"), ("すべて", "*.*")],
+        )
+        if p:
+            py_var.set(p.replace("/", "\\"))
+
+    tk.Button(row2, text="参照...", bg=BG2, fg=FG, relief="flat",
+              font=FONT, cursor="hand2", command=browse_python,
+              activebackground="#333", activeforeground=FG,
+              bd=0, padx=8).pack(side="left", padx=(6, 0))
+
+    tk.Label(frame,
+             text="ComfyUI ポータブル版: python_embeded\\python.exe  /  venv 版: .venv\\Scripts\\python.exe",
+             bg=BG, fg="#888", font=FONT_S, anchor="w").pack(fill="x", pady=(4, 0))
 
     status_var = tk.StringVar()
     tk.Label(root, textvariable=status_var, bg=BG, fg="#f87171",
@@ -150,25 +199,105 @@ def show_setup_wizard():
     def on_ok():
         d = path_var.get().strip()
         if not d:
-            status_var.set("フォルダを入力してください。")
+            status_var.set("ComfyUI フォルダを入力してください。")
             return
         main_py = os.path.join(d, "main.py")
         if not os.path.isfile(main_py):
             status_var.set(f"main.py が見つかりません: {d}")
             return
+        py = py_var.get().strip()
+        if not py or not os.path.isfile(py):
+            status_var.set("python.exe が見つかりません。パスを確認してください。")
+            return
         result["comfyui_dir"] = d
-        result["comfyui_python"] = find_python(d)
+        result["comfyui_python"] = py
         result["flask_port"] = 5000
         root.destroy()
 
     btn_frame = tk.Frame(root, bg=BG)
-    btn_frame.pack(pady=16)
+    btn_frame.pack(pady=14)
     tk.Button(btn_frame, text="  セットアップ開始  ", bg=ACC, fg="#000",
               font=("Segoe UI", 10, "bold"), relief="flat",
               cursor="hand2", command=on_ok, bd=0, padx=6, pady=6).pack()
 
     root.mainloop()
     return result if result else None
+
+
+CUSTOM_NODES = [
+    {
+        "name": "ComfyUI-GGUF",
+        "url": "https://github.com/city96/ComfyUI-GGUF",
+    },
+    {
+        "name": "comfyui_controlnet_aux",
+        "url": "https://github.com/Fannovel16/comfyui_controlnet_aux",
+    },
+    {
+        "name": "ComfyUI-Impact-Pack",
+        "url": "https://github.com/ltdrdata/ComfyUI-Impact-Pack",
+    },
+    {
+        "name": "ComfyUI-Custom-Scripts",
+        "url": "https://github.com/pythongosssss/ComfyUI-Custom-Scripts",
+    },
+    {
+        "name": "ComfyUI-VideoHelperSuite",
+        "url": "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite",
+    },
+]
+
+
+def install_custom_nodes(comfy_dir, python_exe, label_var=None):
+    """必要なカスタムノードを git clone でインストールする（初回のみ）。"""
+    custom_nodes_dir = os.path.join(comfy_dir, "custom_nodes")
+    os.makedirs(custom_nodes_dir, exist_ok=True)
+
+    try:
+        subprocess.check_call(
+            ["git", "--version"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            timeout=10,
+        )
+    except Exception:
+        log("git が見つかりません。カスタムノードの自動インストールをスキップします。")
+        return
+
+    for node in CUSTOM_NODES:
+        target = os.path.join(custom_nodes_dir, node["name"])
+        if os.path.isdir(target):
+            log(f"スキップ（既存）: {node['name']}")
+            continue
+
+        if label_var is not None:
+            try:
+                label_var.set(f"カスタムノード: {node['name']}")
+            except Exception:
+                pass
+
+        log(f"git clone: {node['url']}")
+        try:
+            subprocess.check_call(
+                ["git", "clone", "--depth=1", node["url"], target],
+                timeout=180,
+            )
+        except Exception as e:
+            log(f"クローン失敗: {node['name']}: {e}")
+            continue
+
+        req = os.path.join(target, "requirements.txt")
+        if os.path.isfile(req):
+            log(f"pip install: {node['name']}")
+            try:
+                subprocess.check_call(
+                    [python_exe, "-m", "pip", "install", "-r", req,
+                     "--quiet", "--disable-pip-version-check"],
+                    timeout=300,
+                )
+            except Exception as e:
+                log(f"pip install 失敗: {node['name']}: {e}")
+
+    log("カスタムノードのインストール完了。")
 
 
 def install_requirements(python_exe):
@@ -251,11 +380,37 @@ def main():
         if not ok:
             sys.exit(1)
 
+        close_prog3 = show_progress_window(
+            "カスタムノードをインストール中...\n(初回のみ / 数分かかる場合があります)"
+        )
+        install_custom_nodes(cfg["comfyui_dir"], python_exe)
+        close_prog3()
+
     comfy_dir  = cfg.get("comfyui_dir", r"C:\AI\ComfyUI")
     python_exe = cfg.get("comfyui_python") or find_python(comfy_dir)
-    if not os.path.isfile(python_exe):
+    if not python_exe or not os.path.isfile(python_exe):
         log(f"ComfyUI Python が見つからない → システム Python を使用")
         python_exe = sys.executable
+
+    # フリーズ EXE 自身が python_exe になると無限起動するため検出して止める
+    if getattr(sys, 'frozen', False):
+        try:
+            if os.path.normcase(os.path.abspath(python_exe)) == \
+               os.path.normcase(os.path.abspath(sys.executable)):
+                show_error(
+                    "Python が見つかりません",
+                    f"ComfyUI の Python インタープリターが見つかりません。\n\n"
+                    f"ComfyUI フォルダ: {comfy_dir}\n\n"
+                    f"以下のいずれかが存在することを確認してください:\n"
+                    f"  .venv\\Scripts\\python.exe\n"
+                    f"  python_embeded\\python.exe\n\n"
+                    f"ComfyUI ポータブル版をお使いの場合は\n"
+                    f"python_embeded フォルダが存在するか確認してください。"
+                )
+                sys.exit(1)
+        except Exception as e:
+            log(f"python_exe 検証エラー: {e}")
+
     flask_port = int(cfg.get("flask_port", 5000))
 
     log(f"python_exe={python_exe}")

@@ -45,9 +45,57 @@ if errorlevel 1 (
     echo パッケージのインストール完了。
 )
 
+REM --- カスタムノードをインストール ---
+echo.
+echo カスタムノードをインストール中...
+echo (初回のみ / 数分かかる場合があります)
+
+git --version > nul 2>&1
+if errorlevel 1 (
+    echo [警告] git が見つかりません。カスタムノードの自動インストールをスキップします。
+    echo   後で手動でインストールするか、ComfyUI Manager をご利用ください。
+    goto :skip_custom_nodes
+)
+
+set NODES_DIR=%COMFY_DIR%\custom_nodes
+if not exist "%NODES_DIR%" mkdir "%NODES_DIR%"
+
+call :clone_node "ComfyUI-GGUF"              "https://github.com/city96/ComfyUI-GGUF"
+call :clone_node "comfyui_controlnet_aux"    "https://github.com/Fannovel16/comfyui_controlnet_aux"
+call :clone_node "ComfyUI-Impact-Pack"       "https://github.com/ltdrdata/ComfyUI-Impact-Pack"
+call :clone_node "ComfyUI-Custom-Scripts"    "https://github.com/pythongosssss/ComfyUI-Custom-Scripts"
+call :clone_node "ComfyUI-VideoHelperSuite"  "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite"
+
+echo カスタムノードのインストール完了。
+:skip_custom_nodes
+
 echo.
 echo ========================================
 echo   セットアップ完了！
 echo   「起動.bat」または「起動.vbs」をダブルクリックして起動してください。
 echo ========================================
 pause
+exit /b
+
+:clone_node
+set _NAME=%~1
+set _URL=%~2
+if exist "%NODES_DIR%\%_NAME%" (
+    echo   スキップ (既存): %_NAME%
+    goto :eof
+)
+echo   クローン中: %_NAME%
+git clone --depth=1 "%_URL%" "%NODES_DIR%\%_NAME%"
+if errorlevel 1 (
+    echo   [警告] クローン失敗: %_NAME%
+    goto :eof
+)
+if exist "%NODES_DIR%\%_NAME%\requirements.txt" (
+    echo   依存パッケージをインストール中: %_NAME%
+    if "%COMFY_PYTHON%"=="python" (
+        python -m pip install -r "%NODES_DIR%\%_NAME%\requirements.txt" --quiet --disable-pip-version-check
+    ) else (
+        "%COMFY_PYTHON%" -m pip install -r "%NODES_DIR%\%_NAME%\requirements.txt" --quiet --disable-pip-version-check
+    )
+)
+goto :eof
