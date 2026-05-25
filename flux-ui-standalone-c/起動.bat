@@ -52,7 +52,6 @@ echo ブラウザを開いています: http://localhost:%FLASK_PORT%/loading
 start "" "http://localhost:%FLASK_PORT%/loading"
 
 echo.
-echo FLUX UI が起動しました。
-echo ブラウザを閉じてもFlaskは動き続けます。
-echo このウィンドウを閉じるとFlaskが終了します。
+echo FLUX UI started.
+echo Close this window to stop Flask.
 pause
