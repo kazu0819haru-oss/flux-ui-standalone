@@ -119,12 +119,12 @@ CLIP_DIR         = os.path.join(_COMFYUI_DIR, "models", "clip")
 VAE_DIR          = os.path.join(_COMFYUI_DIR, "models", "vae")
 
 FLUX2_CONFIG = {
-    "unet": r"flux2\flux2_dev_fp8mixed.safetensors",
-    "vae": r"flux2\flux2-vae.safetensors",
-    "clip": r"flux2\mistral_3_small_flux2_fp8.safetensors",
+    "unet": _PORTABLE_CONFIG.get("flux2_unet", r"flux2\flux2_dev_fp8mixed.safetensors"),
+    "vae":  _PORTABLE_CONFIG.get("flux2_vae",  r"flux2\flux2-vae.safetensors"),
+    "clip": _PORTABLE_CONFIG.get("flux2_clip", r"flux2\mistral_3_small_flux2_fp8.safetensors"),
 }
 FLUX2_ALT_CLIPS = [
-    r"flux2\mistral_3_small_flux2_fp8.safetensors",
+    _PORTABLE_CONFIG.get("flux2_clip", r"flux2\mistral_3_small_flux2_fp8.safetensors"),
 ]
 FLUX2_TURBO_LORA = "Flux_2-Turbo-LoRA_comfyui.safetensors"
 
@@ -403,11 +403,11 @@ def _flux2_missing_requirements():
     if not _model_file_exists(DIFFM_DIR, info["model"]):
         missing.append(f"diffusion model: {info['model']}")
     if not (
-        _model_file_exists(r"C:\AI\ComfyUI\models\text_encoders", info["text_encoder"]) or
-        _model_file_exists(r"C:\AI\ComfyUI\models\clip", info["text_encoder"])
+        _model_file_exists(TEXT_ENCODER_DIR, info["text_encoder"]) or
+        _model_file_exists(CLIP_DIR, info["text_encoder"])
     ):
         missing.append(f"text encoder: {info['text_encoder']}")
-    if not _model_file_exists(r"C:\AI\ComfyUI\models\vae", info["vae"]):
+    if not _model_file_exists(VAE_DIR, info["vae"]):
         missing.append(f"vae: {info['vae']}")
     return missing
 
