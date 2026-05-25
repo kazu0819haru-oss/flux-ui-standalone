@@ -50,22 +50,23 @@ _comfy_starting = False
 _comfy_start_lock = threading.Lock()
 _last_start_attempt = 0.0
 
-def _maybe_start_comfy():
-    """ComfyUIが落ちていれば config.json の Python で起動する（5分に1回まで）"""
+def _maybe_start_comfy(force=False):
+    """ComfyUIが落ちていれば config.json の Python で起動する（5分に1回まで、forceで即時）。
+    Returns True if a restart was initiated."""
     global _comfy_starting, _last_start_attempt
     with _comfy_start_lock:
         now = time.time()
-        if _comfy_starting or now - _last_start_attempt < 300:
-            return
+        if _comfy_starting or (not force and now - _last_start_attempt < 300):
+            return False
         try:
             requests.get(f"{COMFY_URL}/system_stats", timeout=1)
-            return
+            return False
         except Exception:
             pass
         comfy_dir = _COMFYUI_DIR
         comfy_main = os.path.join(comfy_dir, "main.py")
         if not os.path.isfile(comfy_main):
-            return
+            return False
         _comfy_starting = True
         _last_start_attempt = now
 
@@ -88,6 +89,17 @@ def _maybe_start_comfy():
             _comfy_starting = False
 
     threading.Thread(target=_run, daemon=True).start()
+    return True
+
+
+def _comfy_watchdog():
+    """バックグラウンドで ComfyUI の死活監視と自動再起動を行う。"""
+    time.sleep(30)
+    while True:
+        _maybe_start_comfy()
+        time.sleep(60)
+
+threading.Thread(target=_comfy_watchdog, daemon=True, name="comfy-watchdog").start()
 
 # FLUX works best at ≤1536px per side. Images larger than this are downscaled
 # before upload so the VAE / VRAM stays manageable.
@@ -212,7 +224,7 @@ else:
         _f.write(_sk)
     app.secret_key = _sk
 
-_AUTH_EXEMPT = {"login_page", "logout", "loading_page", "ping", "health", "keepalive"}
+_AUTH_EXEMPT = {"login_page", "logout", "loading_page", "ping", "health", "keepalive", "restart_comfy_api"}
 _ACCESS_LOG  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "access.log")
 
 def _log_access(status: str, note: str = ""):
@@ -1210,6 +1222,18 @@ def health():
                         "version": info.get("system", {}).get("comfyui_version", "")})
     except Exception:
         return jsonify({"comfy": "offline"}), 503
+
+
+@app.route("/api/restart_comfy", methods=["POST"])
+def restart_comfy_api():
+    """ComfyUI を手動で再起動する（クールダウンを無視して即時起動）。"""
+    started = _maybe_start_comfy(force=True)
+    return jsonify({
+        "ok": True,
+        "started": started,
+        "starting": _comfy_starting,
+        "message": "ComfyUI 再起動を開始しました" if started else "すでに起動処理中です",
+    })
 
 
 @app.route("/api/generate", methods=["POST"])

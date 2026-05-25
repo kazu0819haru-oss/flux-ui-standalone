@@ -837,7 +837,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
   <button class="hd-icon" onclick="openSettings()" title="設定">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
   </button>
-  <div class="conn"><div class="conn-dot on" id="connDot"></div><span id="connLabel">接続済み · v0.21.1</span></div>
+  <div class="conn"><div class="conn-dot on" id="connDot"></div><span id="connLabel">接続済み · v0.21.1</span><button id="restartBtn" onclick="manualRestartComfy()" title="ComfyUI を手動再起動" style="display:none;margin-left:.4rem;background:transparent;border:1px solid var(--border2);border-radius:5px;color:var(--text2);cursor:pointer;font-size:.7rem;padding:.1rem .35rem;line-height:1.4">↺ 再起動</button></div>
 </header>
 
 <!-- Settings Drawer -->
@@ -1546,25 +1546,45 @@ document.addEventListener('click', e=>{
 });
 
 // ── Connection / models / stats ──────────────────────────────
+let _offlineRestartAttempted=false;
 async function checkConn(){
   const btn=document.getElementById('genBtn');
+  const rBtn=document.getElementById('restartBtn');
   try{
     const d=await api('/api/health');
     document.getElementById('connDot').classList.add('on');
     document.getElementById('connLabel').textContent='接続済み'+(d.version?` · v${d.version}`:'');
+    if(rBtn) rBtn.style.display='none';
     if(btn.disabled){
       btn.disabled=false;
       btn.title='';
       btn.removeAttribute('data-offline');
       loadModels();
     }
+    _offlineRestartAttempted=false;
   }catch{
     document.getElementById('connDot').classList.remove('on');
-    document.getElementById('connLabel').textContent='ComfyUI 起動中...';
     btn.disabled=true;
     btn.title='ComfyUI の起動を待っています...';
     btn.setAttribute('data-offline','1');
+    if(rBtn) rBtn.style.display='';
+    if(!_offlineRestartAttempted){
+      _offlineRestartAttempted=true;
+      document.getElementById('connLabel').textContent='ComfyUI を再起動中...';
+      try{ await api('/api/restart_comfy',{method:'POST'}); }catch{}
+    }else{
+      document.getElementById('connLabel').textContent='ComfyUI 起動中...';
+    }
   }
+}
+async function manualRestartComfy(){
+  const rBtn=document.getElementById('restartBtn');
+  if(rBtn) rBtn.style.display='none';
+  document.getElementById('connLabel').textContent='ComfyUI を再起動中...';
+  try{
+    await api('/api/restart_comfy',{method:'POST'});
+    toast('ComfyUI 再起動を開始しました');
+  }catch(e){ toast('再起動失敗: '+e.message); if(rBtn) rBtn.style.display=''; }
 }
 async function loadModels(){
   try{
