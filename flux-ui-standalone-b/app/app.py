@@ -118,14 +118,28 @@ TEXT_ENCODER_DIR = os.path.join(_COMFYUI_DIR, "models", "text_encoders")
 CLIP_DIR         = os.path.join(_COMFYUI_DIR, "models", "clip")
 VAE_DIR          = os.path.join(_COMFYUI_DIR, "models", "vae")
 
+def _resolve_flux2_model(candidates, dirs, config_key):
+    override = _PORTABLE_CONFIG.get(config_key)
+    if override:
+        return override
+    for name in candidates:
+        for d in dirs:
+            if os.path.exists(os.path.join(d, name)):
+                return name
+    return candidates[0]
+
 FLUX2_CONFIG = {
-    "unet": _PORTABLE_CONFIG.get("flux2_unet", r"flux2\flux2_dev_fp8mixed.safetensors"),
-    "vae":  _PORTABLE_CONFIG.get("flux2_vae",  r"flux2\flux2-vae.safetensors"),
-    "clip": _PORTABLE_CONFIG.get("flux2_clip", r"flux2\mistral_3_small_flux2_fp8.safetensors"),
+    "unet": _resolve_flux2_model(
+        [r"flux2\flux2_dev_fp8mixed.safetensors", "flux2_dev_fp8mixed.safetensors"],
+        [DIFFM_DIR], "flux2_unet"),
+    "vae": _resolve_flux2_model(
+        [r"flux2\flux2-vae.safetensors", "flux2-vae.safetensors"],
+        [VAE_DIR], "flux2_vae"),
+    "clip": _resolve_flux2_model(
+        [r"flux2\mistral_3_small_flux2_fp8.safetensors", "mistral_3_small_flux2_fp8.safetensors"],
+        [TEXT_ENCODER_DIR, CLIP_DIR], "flux2_clip"),
 }
-FLUX2_ALT_CLIPS = [
-    _PORTABLE_CONFIG.get("flux2_clip", r"flux2\mistral_3_small_flux2_fp8.safetensors"),
-]
+FLUX2_ALT_CLIPS = [FLUX2_CONFIG["clip"]]
 FLUX2_TURBO_LORA = "Flux_2-Turbo-LoRA_comfyui.safetensors"
 
 WAN22_CONFIG = {
