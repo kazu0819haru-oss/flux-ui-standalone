@@ -1465,7 +1465,7 @@ const S = {
   w:1024, h:1024, batch:1, steps:20, cfg:1.0, variations:1,
   sampler:'euler', scheduler:'simple',
   seed:-1, seedLocked:false, lastSeed:null,
-  model:'flux1-dev.safetensors',
+  model:localStorage.getItem('flux_model')||'flux1-dev.safetensors',
   loras: [],
   jobs: new Map(),
   tab:'all',
@@ -1556,6 +1556,7 @@ async function checkConn(){
       btn.disabled=false;
       btn.title='';
       btn.removeAttribute('data-offline');
+      loadModels();
     }
   }catch{
     document.getElementById('connDot').classList.remove('on');
@@ -1584,7 +1585,12 @@ async function loadModels(){
       ms.appendChild(o);
     }
     S._wan22Avail=!!(d.wan22_available||d.wan22_high_available);
-    if (![...ms.options].some(o=>o.value===S.model)) S.model=ms.value;
+    const _normPath=m=>String(m||'').replace(/\\/g,'/').toLowerCase();
+    const _exactMatch=[...ms.options].some(o=>o.value===S.model);
+    if(!_exactMatch){
+      const _fuzzy=[...ms.options].find(o=>_normPath(o.value)===_normPath(S.model));
+      S.model=_fuzzy?_fuzzy.value:ms.value;
+    }
     ms.value=S.model;
     updateFlux2UI();
     updateWan22UI();
@@ -1625,6 +1631,7 @@ function modelLabel(name){
 }
 function setModel(name){
   S.model=name;
+  localStorage.setItem('flux_model',name);
   enforcePromptImageLimit();
   updateFlux2UI();
   updateWan22UI();
@@ -1678,9 +1685,10 @@ function updateWan22UI(){
 }
 function promptImageLimit(nextItem=null){
   if(promptItemIsVideo(nextItem) || primaryPromptItemIsVideo()) return 1;
+  if(isFlux2Model()) return 10;
   if(nextItem?._gallery) return 1;
   if(promptSelectionUsesMediaUI()) return 1;
-  return isFlux2Model()?10:1;
+  return 1;
 }
 function enforcePromptImageLimit(){
   const max=promptImageLimit();
