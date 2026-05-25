@@ -538,12 +538,16 @@ def build_flux2_workflow(prompt, width, height, steps, seed, batch_size=1,
                                     "reference_latents_method": "index"}}
         conditioning_ref = [method_id, 0]
 
-    wf["50"] = {"class_type": "LoraLoaderModelOnly",
-                "inputs": {"model": ["12", 0],
-                           "lora_name": FLUX2_TURBO_LORA,
-                           "strength_model": 1.0}}
+    if _model_file_exists(LORA_MODEL_DIR, FLUX2_TURBO_LORA):
+        wf["50"] = {"class_type": "LoraLoaderModelOnly",
+                    "inputs": {"model": ["12", 0],
+                               "lora_name": FLUX2_TURBO_LORA,
+                               "strength_model": 1.0}}
+        model_for_guider = ["50", 0]
+    else:
+        model_for_guider = ["12", 0]
     wf["22"] = {"class_type": "BasicGuider",
-                "inputs": {"model": ["50", 0], "conditioning": conditioning_ref}}
+                "inputs": {"model": model_for_guider, "conditioning": conditioning_ref}}
     wf["13"] = {"class_type": "SamplerCustomAdvanced",
                 "inputs": {"noise": ["25", 0], "guider": ["22", 0],
                            "sampler": ["16", 0], "sigmas": ["48", 0],

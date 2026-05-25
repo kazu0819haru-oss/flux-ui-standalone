@@ -2042,7 +2042,7 @@ async function generate(){
     if (primaryPromptItemIsVideo() || (isVideoUpscaleModel() && !useMediaUI)) {
       await runVideoUpscaleFromPrompt(); return;
     }
-    if (isFlux2Model() && !useMediaUI) {
+    if (isFlux2Model()) {
       if (promptVal) addToHistory(promptVal);
       await runFlux2FromPrompt(promptVal); return;
     }
