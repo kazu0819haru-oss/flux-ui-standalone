@@ -52,6 +52,6 @@ echo ブラウザを開いています: http://localhost:%FLASK_PORT%/loading
 start "" "http://localhost:%FLASK_PORT%/loading"
 
 echo.
-echo FLUX UI started.
-echo Close this window to stop Flask.
+echo FLUX UI started. (Flask runs in background)
+echo To stop: close the minimized CMD window running Flask.
 pause
