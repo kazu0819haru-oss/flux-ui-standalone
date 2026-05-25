@@ -721,7 +721,7 @@ def _t5_model_name():
 
 def build_inpaint_workflow(image_name, mask_name, prompt, steps, seed,
                             denoise=1.0, sampler="euler", scheduler="normal", cfg=2.0,
-                            guidance=30.0):
+                            guidance=30.0, batch_size=1):
     wf = {}
     wf.update(_build_model_nodes())
     wf["12"] = {"class_type": "UNETLoader",
@@ -745,11 +745,16 @@ def build_inpaint_workflow(image_name, mask_name, prompt, steps, seed,
                 "inputs": {"noise_mask": False,
                            "positive": ["15", 0], "negative": ["33", 0],
                            "vae": ["10", 0], "pixels": ["1", 0], "mask": ["51", 0]}}
+    latent_ref = ["52", 2]
+    if int(batch_size) > 1:
+        wf["36"] = {"class_type": "RepeatLatentBatch",
+                    "inputs": {"samples": ["52", 2], "amount": int(batch_size)}}
+        latent_ref = ["36", 0]
     wf["13"] = {
         "class_type": "KSampler",
         "inputs": {
             "cfg": cfg, "denoise": denoise,
-            "latent_image": ["52", 2], "model": ["14", 0],
+            "latent_image": latent_ref, "model": ["14", 0],
             "negative": ["52", 1], "positive": ["52", 0],
             "sampler_name": sampler, "scheduler": scheduler,
             "seed": seed, "steps": steps,
@@ -984,7 +989,7 @@ def build_kontext_workflow(image_name, instruction, steps=28, seed=0,
 
 def build_img2img_full_workflow(image_name, prompt, negative, steps, seed,
                                  denoise=0.75, sampler="euler", scheduler="simple",
-                                 cfg=1.0, loras=None):
+                                 cfg=1.0, loras=None, batch_size=1):
     """Full img2img with LoRA support."""
     wf = {}
     wf.update(_build_model_nodes())
@@ -997,9 +1002,14 @@ def build_img2img_full_workflow(image_name, prompt, negative, steps, seed,
                "inputs": {"text": prompt, "clip": clip_ref}}
     wf["33"] = {"class_type": "CLIPTextEncode",
                 "inputs": {"text": negative or "", "clip": clip_ref}}
+    latent_ref = ["2", 0]
+    if int(batch_size) > 1:
+        wf["36"] = {"class_type": "RepeatLatentBatch",
+                    "inputs": {"samples": ["2", 0], "amount": int(batch_size)}}
+        latent_ref = ["36", 0]
     wf["13"] = {"class_type": "KSampler",
                 "inputs": {"cfg": cfg, "denoise": denoise,
-                           "latent_image": ["2", 0], "model": model_ref,
+                           "latent_image": latent_ref, "model": model_ref,
                            "negative": ["33", 0], "positive": ["6", 0],
                            "sampler_name": sampler, "scheduler": scheduler,
                            "seed": seed, "steps": steps}}
@@ -1420,6 +1430,7 @@ def inpaint():
     denoise   = float(data.get("denoise", 1.0))
     steps     = max(1, min(100, int(data.get("steps", 20))))
     cfg       = float(data.get("cfg", 2.0))
+    batch_size = max(1, min(4, int(data.get("batch_size", 1))))
     seed      = random.randint(0, 2**31 - 1)
 
     if not filename or not mask_data:
@@ -1440,7 +1451,7 @@ def inpaint():
         up.raise_for_status()
         mask_name = up.json().get("name", f"mask_{seed}.png")
 
-        workflow = build_inpaint_workflow(img_name, mask_name, prompt, steps, seed, denoise, cfg=cfg)
+        workflow = build_inpaint_workflow(img_name, mask_name, prompt, steps, seed, denoise, cfg=cfg, batch_size=batch_size)
         prompt_id, client_id = _queue_workflow(workflow)
         _gallery_pending[prompt_id] = {
             "prompt": prompt, "seed": seed, "steps": steps, "cfg": cfg,
@@ -1696,6 +1707,7 @@ def img2img():
     sampler   = data.get("sampler", "euler")
     scheduler = data.get("scheduler", "simple")
     loras     = data.get("loras") or []
+    batch_size = max(1, min(4, int(data.get("batch_size", 1))))
 
     seed = data.get("seed")
     if seed is None or seed == -1:
@@ -1715,7 +1727,7 @@ def img2img():
     try:
         uploaded_name = _fetch_and_upload_image(filename, subfolder, img_type)
         workflow = build_img2img_full_workflow(
-            uploaded_name, prompt, negative, steps, seed, denoise, sampler, scheduler, cfg, loras
+            uploaded_name, prompt, negative, steps, seed, denoise, sampler, scheduler, cfg, loras, batch_size
         )
         prompt_id, client_id = _queue_workflow(workflow)
         _gallery_pending[prompt_id] = {
@@ -2732,7 +2744,7 @@ def get_video():
 # ── Outpainting ──────────────────────────────────────────────────
 def build_outpaint_workflow(image_name, prompt, pad_top, pad_right, pad_bottom, pad_left,
                              steps, seed, cfg=2.0, sampler="euler", scheduler="normal",
-                             guidance=30.0):
+                             guidance=30.0, batch_size=1):
     wf = {}
     wf.update(_build_model_nodes())
     wf["12"] = {"class_type": "UNETLoader",
@@ -2754,9 +2766,14 @@ def build_outpaint_workflow(image_name, prompt, pad_top, pad_right, pad_bottom, 
                 "inputs": {"noise_mask": False,
                            "positive": ["15", 0], "negative": ["33", 0],
                            "vae": ["10", 0], "pixels": ["2", 0], "mask": ["2", 1]}}
+    latent_ref = ["3", 2]
+    if int(batch_size) > 1:
+        wf["36"] = {"class_type": "RepeatLatentBatch",
+                    "inputs": {"samples": ["3", 2], "amount": int(batch_size)}}
+        latent_ref = ["36", 0]
     wf["13"] = {"class_type": "KSampler",
                 "inputs": {"cfg": cfg, "denoise": 1.0,
-                           "latent_image": ["3", 2], "model": ["14", 0],
+                           "latent_image": latent_ref, "model": ["14", 0],
                            "negative": ["3", 1], "positive": ["3", 0],
                            "sampler_name": sampler, "scheduler": scheduler,
                            "seed": seed, "steps": steps}}
@@ -2780,6 +2797,7 @@ def outpaint():
     pad_left   = int(data.get("pad_left", 0))
     steps     = max(1, min(100, int(data.get("steps", 20))))
     cfg       = float(data.get("cfg", 1.0))
+    batch_size = max(1, min(4, int(data.get("batch_size", 1))))
     seed      = random.randint(0, 2**31 - 1)
 
     if not filename:
@@ -2791,7 +2809,7 @@ def outpaint():
     try:
         uploaded = _fetch_and_upload_image(filename, subfolder, img_type)
         wf = build_outpaint_workflow(uploaded, prompt, pad_top, pad_right, pad_bottom, pad_left,
-                                      steps, seed, cfg)
+                                      steps, seed, cfg, batch_size=batch_size)
         pid, cid = _queue_workflow(wf)
         _gallery_pending[pid] = {
             "prompt": prompt, "seed": seed,

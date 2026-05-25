@@ -2932,23 +2932,24 @@ async function runInpaint(){
   octx.drawImage(_ipCtx.canvas, 0,0,dispW,dispH, 0,0,origW,origH);
   const mask=off.toDataURL('image/png');
   closeInpaint();
-  const ph=addPh(_ipImg.w||origW, _ipImg.h||origH, 'インペイント中...');
+  const phs=addPhs(_ipImg.w||origW, _ipImg.h||origH, 'インペイント中...', S.batch);
   try{
     const d=await api('/api/inpaint',{method:'POST',body:{
       filename:_ipImg.filename, subfolder:_ipImg.subfolder, type:_ipImg.type,
       mask_data:mask, prompt, steps:S.steps, cfg:Math.max(2, Number(S.cfg)||2), denoise:1.0,
+      batch_size: S.batch,
     }});
     if(d.error) throw new Error(d.error);
-    if(d.client_id) startWS(d.client_id, ph);
-    trackJob(d.prompt_id, ph, (imgs)=>{
-      imgs.forEach(img=>{
+    if(d.client_id) startWS(d.client_id, phs);
+    trackJob(d.prompt_id, phs, (imgs)=>{
+      imgs.forEach((img,i)=>{
         const url=imgURL(img);
         prependImg({url, filename:img.filename, subfolder:img.subfolder||'', type:img.type||'output',
-          prompt:'[Inpaint] '+prompt, seed:d.seed, w:_ipImg.w, h:_ipImg.h, steps:S.steps, ts:Date.now()}, ph);
+          prompt:'[Inpaint] '+prompt, seed:d.seed, w:_ipImg.w, h:_ipImg.h, steps:S.steps, ts:Date.now()}, phs[i]||null);
       });
-      ph.remove(); updateQueueUI();
-    }, e=>{ ph.remove(); updateQueueUI(); toast(e||'インペイント失敗'); });
-  }catch(e){ ph.remove(); updateQueueUI(); toast(e.message); }
+      updateQueueUI();
+    }, e=>{ phs.forEach(p=>p?.remove()); updateQueueUI(); toast(e||'インペイント失敗'); });
+  }catch(e){ phs.forEach(p=>p?.remove()); updateQueueUI(); toast(e.message); }
 }
 
 // ── Outpaint ─────────────────────────────────────────────────
@@ -2971,24 +2972,24 @@ async function runOutpaint(){
   closeOutpaint();
   const newW=(_opImg.w||1024)+left+right;
   const newH=(_opImg.h||1024)+top+bottom;
-  const ph=addPh(newW, newH, 'Outpaint 中...');
+  const phs=addPhs(newW, newH, 'Outpaint 中...', S.batch);
   try{
     const d=await api('/api/outpaint',{method:'POST',body:{
       filename:_opImg.filename, subfolder:_opImg.subfolder, type:_opImg.type,
       prompt, pad_top:top, pad_right:right, pad_bottom:bottom, pad_left:left,
-      steps:S.steps, cfg:S.cfg,
+      steps:S.steps, cfg:S.cfg, batch_size: S.batch,
     }});
     if(d.error) throw new Error(d.error);
-    if(d.client_id) startWS(d.client_id, ph);
-    trackJob(d.prompt_id, ph, (imgs)=>{
-      imgs.forEach(img=>{
+    if(d.client_id) startWS(d.client_id, phs);
+    trackJob(d.prompt_id, phs, (imgs)=>{
+      imgs.forEach((img,i)=>{
         const url=imgURL(img);
         prependImg({url, filename:img.filename, subfolder:img.subfolder||'', type:img.type||'output',
-          prompt:'[Outpaint] '+prompt, seed:d.seed, w:newW, h:newH, steps:S.steps, ts:Date.now()}, ph);
+          prompt:'[Outpaint] '+prompt, seed:d.seed, w:newW, h:newH, steps:S.steps, ts:Date.now()}, phs[i]||null);
       });
-      ph.remove(); updateQueueUI();
-    }, e=>{ ph.remove(); updateQueueUI(); toast(e||'Outpaint失敗'); });
-  }catch(e){ ph.remove(); updateQueueUI(); toast(e.message); }
+      updateQueueUI();
+    }, e=>{ phs.forEach(p=>p?.remove()); updateQueueUI(); toast(e||'Outpaint失敗'); });
+  }catch(e){ phs.forEach(p=>p?.remove()); updateQueueUI(); toast(e.message); }
 }
 
 // ── BG remove ────────────────────────────────────────────────
@@ -3379,22 +3380,23 @@ async function runKontext(){
   const kontextModel=document.getElementById('ktxModelSel')?.value||'';
   const refs=_ktxRefs.filter(Boolean).slice(0,1);
   closeKtx();
-  const ph=addPh(_ktxImg.w||1024, _ktxImg.h||1024,'画像編集中...');
+  const phs=addPhs(_ktxImg.w||1024, _ktxImg.h||1024,'画像編集中...',S.batch);
   try{
     const d=await api('/api/kontext',{method:'POST',body:{
       filename:_ktxImg.filename, subfolder:_ktxImg.subfolder||'',
       type:_ktxImg.type||'output', instruction, guidance, steps,
       kontext_model: kontextModel,
       sampler:'euler', scheduler:'simple',
+      batch_size: S.batch,
       refs: refs
     }});
-    startWS(d.client_id, ph);
-    trackJob(d.prompt_id, ph, imgs=>{
+    startWS(d.client_id, phs);
+    trackJob(d.prompt_id, phs, imgs=>{
       const tags=['kontext',...(refs.length?['ref']:[])];
-      imgs.forEach(img=>addToGallery(img, instruction, d.seed, _ktxImg.w||1024, _ktxImg.h||1024, steps, 'euler', 1.0, tags));
-      ph.remove(); updateQueueUI();
-    }, e=>{ ph.remove(); updateQueueUI(); toast(e); });
-  }catch(e){ ph.remove(); updateQueueUI(); toast(e.message); }
+      imgs.forEach((img,i)=>addToGallery(img, instruction, d.seed, _ktxImg.w||1024, _ktxImg.h||1024, steps, 'euler', 1.0, tags, phs[i]||null));
+      updateQueueUI();
+    }, e=>{ phs.forEach(p=>p?.remove()); updateQueueUI(); toast(e); });
+  }catch(e){ phs.forEach(p=>p?.remove()); updateQueueUI(); toast(e.message); }
 }
 
 // ── Modal Wheel Zoom ─────────────────────────────────────────
@@ -3516,21 +3518,22 @@ async function runI2I(){
   const denoise=parseFloat(document.getElementById('i2iDenoise').value);
   const neg=document.getElementById('i2iNeg').value.trim();
   closeI2I();
-  const ph=addPh(S.w,S.h,'img2img 生成中...');
+  const phs=addPhs(S.w,S.h,'img2img 生成中...',S.batch);
   try{
     const d=await api('/api/img2img',{method:'POST',body:{
       filename:_i2iImg.filename, subfolder:_i2iImg.subfolder||'',
       type:_i2iImg.type||'output', prompt, negative:neg,
       denoise, steps:S.steps, cfg:S.cfg, sampler:S.sampler,
-      scheduler:S.scheduler, seed:S.seedLocked?S.lastSeed:-1, loras:S.loras
+      scheduler:S.scheduler, seed:S.seedLocked?S.lastSeed:-1, loras:S.loras,
+      batch_size: S.batch,
     }});
-    startWS(d.client_id, ph);
-    trackJob(d.prompt_id, ph, imgs=>{
+    startWS(d.client_id, phs);
+    trackJob(d.prompt_id, phs, imgs=>{
       const loraTags=S.loras.map(l=>l.name.replace(/\.safetensors$/i,''));
-      imgs.forEach(img=>{ S.lastSeed=d.seed; addToGallery(img,prompt,d.seed,S.w,S.h,S.steps,S.sampler,S.cfg,['img2img',...loraTags]); });
-      ph.remove(); updateQueueUI();
-    }, e=>{ ph.remove(); updateQueueUI(); toast(e); });
-  }catch(e){ ph.remove(); updateQueueUI(); toast(e.message); }
+      imgs.forEach((img,i)=>{ S.lastSeed=d.seed; addToGallery(img,prompt,d.seed,S.w,S.h,S.steps,S.sampler,S.cfg,['img2img',...loraTags],phs[i]||null); });
+      updateQueueUI();
+    }, e=>{ phs.forEach(p=>p?.remove()); updateQueueUI(); toast(e); });
+  }catch(e){ phs.forEach(p=>p?.remove()); updateQueueUI(); toast(e.message); }
 }
 
 // ── CN Upscale ───────────────────────────────────────────────
