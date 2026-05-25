@@ -1910,9 +1910,9 @@ def build_bfl_ip2p_control_workflow(control_image_name, prompt, width, height, s
                                "image": image_ref}}
         image_ref = ["18", 0]
     elif kind == "depth" and preprocessor and preprocessor != "none":
-        wf["18"] = {"class_type": "AIO_Preprocessor",
-                    "inputs": {"preprocessor": preprocessor,
-                               "image": image_ref, "resolution": max(width, height)}}
+        wf["18"] = {"class_type": "DepthAnythingV2Preprocessor",
+                    "inputs": {"image": image_ref, "resolution": max(width, height),
+                               "ckpt_name": "depth_anything_v2_vitl.pth"}}
         image_ref = ["18", 0]
 
     wf["35"] = {"class_type": "InstructPixToPixConditioning",
