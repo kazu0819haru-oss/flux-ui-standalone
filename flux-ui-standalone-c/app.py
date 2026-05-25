@@ -377,7 +377,7 @@ def _wf_path(name):
 
 def _resolve_base_model(model_name=None):
     if model_name and _is_visible_base_model(model_name):
-        if _model_file_exists(KONTEXT_MODEL_DIR, model_name) or _model_file_exists(r"C:\AI\ComfyUI\models\unet", model_name):
+        if _model_file_exists(KONTEXT_MODEL_DIR, model_name) or _model_file_exists(UNET_DIR, model_name):
             return _wf_path(model_name)
     return MODEL_CONFIG["unet"]
 
@@ -726,9 +726,7 @@ def _kontext_model_name(requested=None):
 
 
 def _t5_model_name():
-    text_encoder_dir = r"C:\AI\ComfyUI\models\text_encoders"
-    clip_dir = r"C:\AI\ComfyUI\models\clip"
-    if _model_file_exists(text_encoder_dir, T5_FP8_MODEL) or _model_file_exists(clip_dir, T5_FP8_MODEL):
+    if _model_file_exists(TEXT_ENCODER_DIR, T5_FP8_MODEL) or _model_file_exists(CLIP_DIR, T5_FP8_MODEL):
         return T5_FP8_MODEL
     return MODEL_CONFIG["t5"]
 
@@ -1514,7 +1512,7 @@ def cancel_all():
 def lora_preview(lora_name):
     """Return preview image for a LoRA if a .preview.png/.jpg sibling exists."""
     import os
-    lora_dir = r"C:\AI\ComfyUI\models\loras"
+    lora_dir = LORA_MODEL_DIR
     base = os.path.splitext(lora_name)[0]
     for ext in (".preview.png", ".preview.jpg", ".png", ".jpg"):
         p = os.path.join(lora_dir, base + ext)
@@ -1912,8 +1910,8 @@ def _resolve_bfl_control(kind, requested_name=""):
     if _model_file_exists(CN_UPSCALER_DIR, full):
         raise RuntimeError(
             f"{full} は ControlNetLoader では読めません。"
-            f"C:\\AI\\ComfyUI\\models\\diffusion_models に移動するか、"
-            f"{lora} を C:\\AI\\ComfyUI\\models\\loras に置いてください。"
+            f"{DIFFM_DIR} に移動するか、"
+            f"{lora} を {LORA_MODEL_DIR} に置いてください。"
         )
     return None
 
