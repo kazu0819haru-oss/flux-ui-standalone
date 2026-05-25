@@ -131,6 +131,15 @@ WAN22_CONFIG = {
     },
 }
 
+WAN22_HIGH_UNET_CANDIDATES = [
+    WAN22_CONFIG["high"]["unet"],
+    "wan2.2_i2v_high_noise_14B_Q5_K_M.gguf",
+]
+WAN22_LOW_UNET_CANDIDATES = [
+    WAN22_CONFIG["low"]["unet"],
+    "wan2.2_i2v_low_noise_14B_Q5_K_M.gguf",
+]
+
 KONTEXT_MODEL = "flux1-kontext-dev.safetensors"
 KONTEXT_FP8_MODEL = "flux1-dev-kontext_fp8_scaled.safetensors"
 KONTEXT_MODEL_DIR = os.path.join(_COMFYUI_DIR, "models", "diffusion_models")
@@ -567,8 +576,8 @@ def build_wan22_workflow(prompt, start_image_name, end_image_name=None,
         "4":  {"class_type": "VAELoader",
                "inputs": {"vae_name": WAN22_CONFIG["vae"]}},
         # High / Low noise model (GGUF or safetensors auto-detected)
-        "5":  _wan22_unet_node(WAN22_CONFIG["high"]["unet"]),
-        "6":  _wan22_unet_node(WAN22_CONFIG["low"]["unet"]),
+        "5":  _wan22_unet_node(_resolve_wan22_unet(WAN22_HIGH_UNET_CANDIDATES)),
+        "6":  _wan22_unet_node(_resolve_wan22_unet(WAN22_LOW_UNET_CANDIDATES)),
         # High noise LoRA (strength=1.5)
         "7":  {"class_type": "LoraLoaderModelOnly",
                "inputs": {"model": ["5", 0],
@@ -1791,6 +1800,14 @@ def _wan22_model_exists(name):
             _model_file_exists(DIFFM_DIR, name))
 
 
+def _resolve_wan22_unet(candidates):
+    """候補ファイル名リストから実際に存在するものを返す。"""
+    for name in candidates:
+        if _wan22_model_exists(name):
+            return name
+    return candidates[0]
+
+
 def _local_model_path(folder, name):
     path = os.path.join(folder, name)
     if os.name != "nt":
@@ -2050,11 +2067,11 @@ def comfy_models():
         ),
         "fill_available":     _model_file_exists(FILL_MODEL_DIR, FILL_MODEL),
         "wan22_available": (
-            _wan22_model_exists(WAN22_CONFIG["high"]["unet"]) and
-            _wan22_model_exists(WAN22_CONFIG["low"]["unet"])
+            any(_wan22_model_exists(n) for n in WAN22_HIGH_UNET_CANDIDATES) and
+            any(_wan22_model_exists(n) for n in WAN22_LOW_UNET_CANDIDATES)
         ),
-        "wan22_high_available": _wan22_model_exists(WAN22_CONFIG["high"]["unet"]),
-        "wan22_low_available":  _wan22_model_exists(WAN22_CONFIG["low"]["unet"]),
+        "wan22_high_available": any(_wan22_model_exists(n) for n in WAN22_HIGH_UNET_CANDIDATES),
+        "wan22_low_available":  any(_wan22_model_exists(n) for n in WAN22_LOW_UNET_CANDIDATES),
     })
 
 
@@ -2989,8 +3006,8 @@ def api_logs():
                                          _model_file_exists(KONTEXT_MODEL_DIR, KONTEXT_FP8_MODEL),
         "Kontext fp8":                   _model_file_exists(KONTEXT_MODEL_DIR, KONTEXT_FP8_MODEL),
         "Kontext full":                  _model_file_exists(KONTEXT_MODEL_DIR, KONTEXT_MODEL),
-        f"Wan2.2 High ({WAN22_CONFIG['high']['unet']})": _wan22_model_exists(WAN22_CONFIG["high"]["unet"]),
-        f"Wan2.2 Low ({WAN22_CONFIG['low']['unet']})":  _wan22_model_exists(WAN22_CONFIG["low"]["unet"]),
+        f"Wan2.2 High": any(_wan22_model_exists(n) for n in WAN22_HIGH_UNET_CANDIDATES),
+        f"Wan2.2 Low":  any(_wan22_model_exists(n) for n in WAN22_LOW_UNET_CANDIDATES),
         f"Wan2.2 VAE ({WAN22_CONFIG['vae']})":  _model_file_exists(VAE_DIR, WAN22_CONFIG["vae"]),
         f"Wan2.2 TextEnc ({WAN22_CONFIG['text_encoder']})": (
             _model_file_exists(TEXT_ENCODER_DIR, WAN22_CONFIG["text_encoder"]) or
