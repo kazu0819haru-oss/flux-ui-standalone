@@ -3830,14 +3830,10 @@ function _renderPromptThumbs() {
   const isVU=isVideoUpscaleModel();
   const useMediaUI=promptSelectionUsesMediaUI();
   const primaryIsVideo=primaryPromptItemIsVideo();
-  const showImageActions=hasImgs && !primaryIsVideo && (!isF2 || useMediaUI) && !isW22 && (!isVU || useMediaUI);
+  const showImageActions=hasImgs && !primaryIsVideo && !isF2 && !isW22 && (!isVU || useMediaUI);
   const showVideoActions=hasImgs && primaryIsVideo;
   document.getElementById('imgActionStrip').classList.toggle('show', showImageActions);
-  const F2_INCOMPATIBLE=new Set(['redux','canny','depth','inpaint','outpaint']);
-  document.querySelectorAll('#imgActionStrip .img-chip').forEach(btn=>{
-    btn.style.display=(isF2 && F2_INCOMPATIBLE.has(btn.dataset.action))?'none':'';
-  });
-  document.getElementById('flux2RefStrip')?.classList.toggle('show', hasImgs && isF2 && !isW22 && !isVU && !useMediaUI);
+  document.getElementById('flux2RefStrip')?.classList.toggle('show', hasImgs && isF2 && !isW22 && !isVU);
   document.getElementById('videoUpscaleStrip')?.classList.toggle('show', (isVU && !showImageActions) || showVideoActions);
   document.getElementById('cnSettingsRow').style.display = (showImageActions && !isF2 && [..._imgActions].some(a => CN_ACTIONS.has(a))) ? 'flex' : 'none';
   document.getElementById('reduxStrengthRow')?.classList.toggle('show', showImageActions && !isF2 && _imgActions.has('redux'));
@@ -4253,8 +4249,10 @@ async function runModalFromPromptImg(action) {
         added++;
       }
     }catch(err){ console.warn('prompt gallery drop failed', err); }
+    if(!added){
     const files=[...(e.dataTransfer?.files||[])].filter(_isImageFile);
     files.forEach(f => { showImgPick(f); added++; });
+    }
     if(!added){
       const text=e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain') || '';
       if(/^https?:\/\/.*\.(png|jpe?g|webp|gif|bmp|avif)(\?.*)?$/i.test(text.trim())){
