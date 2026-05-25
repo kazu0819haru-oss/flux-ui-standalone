@@ -113,6 +113,15 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .sug-lab{font-family:'Bricolage Grotesque',sans-serif;font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-right:.3rem}
 .sug-chip{background:transparent;border:1px solid var(--border2);border-radius:99px;color:var(--text3);font-size:.7rem;padding:.18rem .55rem;cursor:pointer;transition:all .12s;font-family:'Outfit',sans-serif}
 .sug-chip:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-d)}
+.sug-toggle.on{background:var(--accent-d);border-color:var(--accent);color:var(--accent);font-weight:600}
+.sug-toggle.on::before{content:'✓ ';font-size:.65rem}
+/* Picker popup */
+.sug-picker-popup{position:fixed;z-index:2000;background:var(--bg1);border:1px solid var(--border2);border-radius:12px;padding:.7rem .8rem;box-shadow:0 8px 32px rgba(0,0,0,.45);min-width:220px;max-width:280px}
+.sug-picker-q{font-size:.7rem;color:var(--text3);margin-bottom:.55rem;letter-spacing:.02em}
+.sug-picker-opts{display:flex;flex-wrap:wrap;gap:.35rem}
+.sug-picker-opt{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text2);font-size:.72rem;padding:.28rem .6rem;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .1s}
+.sug-picker-opt:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-d)}
+.sug-picker-opt.selected{background:var(--accent-d);border-color:var(--accent);color:var(--accent)}
 
 /* Collapsible */
 .collap-toggle{display:flex;align-items:center;gap:.55rem;padding:.55rem 1.5rem;border-top:1px solid var(--border);cursor:pointer;font-size:.76rem;color:var(--text3);user-select:none;transition:color .15s}
@@ -836,12 +845,12 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
     <div class="drawer-slabel" style="margin-top:0">プロンプト提案</div>
     <div class="sug" style="padding:.25rem .65rem .55rem;border-top:none;border-bottom:1px solid var(--border);background:none">
       <span class="sug-lab">+</span>
-      <button class="sug-chip" data-kind="quality">高品質</button>
-      <button class="sug-chip" data-kind="lighting">照明</button>
-      <button class="sug-chip" data-kind="camera">カメラ</button>
-      <button class="sug-chip" data-kind="mood">雰囲気</button>
-      <button class="sug-chip" data-kind="style">スタイル</button>
-      <button class="sug-chip" data-kind="negative">ネガティブ</button>
+      <button class="sug-chip sug-toggle" id="sugQuality" onclick="toggleSugQuality()">高品質</button>
+      <button class="sug-chip sug-toggle on" id="sugNeg" onclick="toggleSugNeg()">ネガティブ</button>
+      <button class="sug-chip" onclick="openSugPicker('lighting',this)">照明 ▾</button>
+      <button class="sug-chip" onclick="openSugPicker('camera',this)">カメラ ▾</button>
+      <button class="sug-chip" onclick="openSugPicker('mood',this)">雰囲気 ▾</button>
+      <button class="sug-chip" onclick="openSugPicker('style',this)">スタイル ▾</button>
       <button class="help-q" onclick="showHelp('sug',this)" title="説明" style="margin-left:.2rem">?</button>
     </div>
 
@@ -963,7 +972,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
           <button class="jp-use" onclick="useTranslation()" title="翻訳をプロンプトに置き換え">→ 使用</button>
         </div>
       </div>
-      <button class="gen-btn" id="genBtn" onclick="generate()" style="height:46px;align-self:flex-start" title="">
+      <button class="gen-btn" id="genBtn" onclick="generate()" style="height:46px;align-self:flex-end" title="">
         <div class="btn-spin" id="btnSpin"></div>
         <svg id="btnIco" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
         <span class="job-count" id="jobCount"></span>
@@ -1507,7 +1516,7 @@ document.getElementById('batchGroup').addEventListener('click', e=>{
   document.querySelectorAll('.batch-btn').forEach(x=>x.classList.remove('on'));
   b.classList.add('on'); S.batch=+b.dataset.b;
 });
-document.querySelectorAll('.sug-chip').forEach(c=>c.addEventListener('click', ()=>suggestAdd(c.dataset.kind)));
+// ネガティブ初期化は定数定義後に行う（後述の initSugDefault() を参照）
 const promptEl=document.getElementById('prompt');
 promptEl.addEventListener('input', e=>{
   clearTimeout(S.jpTimer);
@@ -1713,21 +1722,148 @@ function useTranslation(){
 }
 
 // ── Suggest chips ───────────────────────────────────────────
-async function suggestAdd(kind){
-  try{
-    const d=await api('/api/suggest',{method:'POST',body:{kind}});
-    const s=d.suggestions[Math.floor(Math.random()*d.suggestions.length)];
-    if(kind==='negative'){
-      const n=document.getElementById('negative');
-      n.value = n.value ? n.value+', '+s : s;
-      toggleSec('neg', true);
-    } else {
-      const p=document.getElementById('prompt');
-      p.value = p.value.trim() ? p.value.trim()+', '+s : s;
-      detectJP(p.value);
-    }
-  }catch{}
+const QUALITY_TERMS = [
+  'highly detailed','8k resolution','ultra realistic',
+  'masterpiece','professional photography','sharp focus'
+];
+const NEG_DEFAULT = 'blurry, low quality, distorted, watermark, text, jpeg artifacts, bad anatomy, deformed';
+
+const PICKER_OPTIONS = {
+  lighting: [
+    {label:'シネマティック', value:'cinematic lighting'},
+    {label:'ゴールデンアワー', value:'golden hour, warm sunlight'},
+    {label:'柔らかい自然光', value:'soft natural light, diffused'},
+    {label:'ドラマチック', value:'dramatic shadows, high contrast lighting'},
+    {label:'スタジオ', value:'studio lighting, clean background'},
+    {label:'夜・ネオン', value:'neon lights, night scene, city glow'},
+    {label:'魔法の光', value:'magical glowing light, ethereal ambiance'},
+    {label:'逆光', value:'backlit, rim lighting, silhouette'},
+  ],
+  camera: [
+    {label:'ポートレート', value:'shot on Canon EOS R5, 85mm lens, shallow depth of field, bokeh'},
+    {label:'広角', value:'wide angle lens, 24mm, expansive view'},
+    {label:'マクロ', value:'macro photography, extreme close-up, sharp details'},
+    {label:'空撮', value:'drone shot, aerial view, bird\'s eye perspective'},
+    {label:'シネマスコープ', value:'anamorphic lens, cinematic, letterbox format'},
+    {label:'スナップ', value:'candid shot, natural, documentary style'},
+    {label:'俯瞰', value:'top-down view, flat lay, overhead shot'},
+    {label:'ローアングル', value:'low angle shot, worm\'s eye view, dramatic perspective'},
+  ],
+  mood: [
+    {label:'穏やか', value:'serene, peaceful, calm atmosphere'},
+    {label:'ミステリアス', value:'mysterious, dark, moody atmosphere'},
+    {label:'幻想的', value:'ethereal, dreamlike, magical atmosphere'},
+    {label:'鮮やか', value:'vibrant, colorful, energetic, lively'},
+    {label:'ロマンチック', value:'romantic, warm, soft glow, intimate'},
+    {label:'哀愁', value:'melancholic, lonely, nostalgic, solitary'},
+    {label:'賑やか', value:'cheerful, bustling, lively, joyful'},
+    {label:'不気味', value:'eerie, uncanny, haunting, unsettling'},
+  ],
+  style: [
+    {label:'写真リアル', value:'photorealistic, ultra detailed, hyperrealistic'},
+    {label:'コンセプトアート', value:'concept art, digital painting, artstation'},
+    {label:'アニメ', value:'anime style, manga, cel shading, vibrant colors'},
+    {label:'油絵', value:'oil painting, impasto technique, fine art, textured'},
+    {label:'水彩', value:'watercolor painting, soft colors, artistic, flowing'},
+    {label:'ピクセルアート', value:'pixel art, 8-bit style, retro game aesthetic'},
+    {label:'ファンタジーアート', value:'fantasy art, epic, magical realism, vivid'},
+    {label:'ミニマル', value:'minimalist, clean, simple, negative space'},
+  ],
+};
+
+function toggleSugQuality(){
+  const btn=document.getElementById('sugQuality');
+  const on=!btn.classList.contains('on');
+  btn.classList.toggle('on',on);
+  const p=document.getElementById('prompt');
+  if(on){
+    const toAdd=QUALITY_TERMS.join(', ');
+    p.value=p.value.trim() ? p.value.trim().replace(/,\s*$/,'')+', '+toAdd : toAdd;
+  } else {
+    let val=p.value;
+    QUALITY_TERMS.forEach(t=>{
+      val=val.replace(new RegExp('(,\\s*)?'+t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(,\\s*)?','gi'),',');
+    });
+    val=val.replace(/^,+\s*|,+\s*$/g,'').replace(/,\s*,+/g,', ').trim();
+    p.value=val;
+  }
+  detectJP(p.value);
 }
+
+function toggleSugNeg(){
+  const btn=document.getElementById('sugNeg');
+  const on=!btn.classList.contains('on');
+  btn.classList.toggle('on',on);
+  const n=document.getElementById('negative');
+  if(on){
+    n.value=NEG_DEFAULT;
+    toggleSec('neg',true);
+  } else {
+    n.value='';
+  }
+}
+
+let _pickerKind=null;
+function openSugPicker(kind, btn){
+  // 同じ種類で再クリックしたら閉じる
+  if(_pickerKind===kind && document.getElementById('sugPicker')){
+    closeSugPicker(); return;
+  }
+  closeSugPicker();
+  _pickerKind=kind;
+  const opts=PICKER_OPTIONS[kind]; if(!opts) return;
+  const labels={
+    lighting:'どんな照明にしますか？',
+    camera:'どんなカメラアングルですか？',
+    mood:'どんな雰囲気にしますか？',
+    style:'どんなスタイルにしますか？'
+  };
+  const pop=document.createElement('div');
+  pop.id='sugPicker';
+  pop.className='sug-picker-popup';
+  pop.innerHTML=`<div class="sug-picker-q">${labels[kind]}</div><div class="sug-picker-opts">${
+    opts.map(o=>`<button class="sug-picker-opt" data-val="${o.value.replace(/"/g,'&quot;')}">${o.label}</button>`).join('')
+  }</div>`;
+  pop.addEventListener('click', e=>{
+    const ob=e.target.closest('.sug-picker-opt'); if(!ob) return;
+    const val=ob.dataset.val;
+    pop.querySelectorAll('.sug-picker-opt').forEach(b=>b.classList.remove('selected'));
+    ob.classList.add('selected');
+    const p=document.getElementById('prompt');
+    p.value=p.value.trim() ? p.value.trim().replace(/,\s*$/,'')+', '+val : val;
+    detectJP(p.value);
+    setTimeout(closeSugPicker, 150);
+  });
+  const rect=btn.getBoundingClientRect();
+  const popW=260;
+  let left=rect.left;
+  if(left+popW>window.innerWidth-8) left=window.innerWidth-popW-8;
+  pop.style.cssText=`top:${rect.bottom+6}px;left:${left}px`;
+  document.body.appendChild(pop);
+  setTimeout(()=>{
+    document.addEventListener('click', _pickerOutside, {capture:true});
+  }, 0);
+}
+function _pickerOutside(e){
+  if(!document.getElementById('sugPicker')?.contains(e.target)){
+    closeSugPicker();
+  }
+}
+function closeSugPicker(){
+  document.getElementById('sugPicker')?.remove();
+  document.removeEventListener('click',_pickerOutside,{capture:true});
+  _pickerKind=null;
+}
+
+// 旧 suggestAdd は互換のため残す
+async function suggestAdd(kind){ /* deprecated */ }
+
+// ネガティブプロンプトをデフォルトON（定数定義後に実行）
+(function initSugDefault(){
+  const n=document.getElementById('negative');
+  if(n && !n.value){ n.value=NEG_DEFAULT; }
+  toggleSec('neg', true);
+})();
 
 // ── Collapse / panels ────────────────────────────────────────
 function toggleSec(name, force){
