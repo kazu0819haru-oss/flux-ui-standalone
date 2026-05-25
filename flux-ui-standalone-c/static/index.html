@@ -1499,6 +1499,7 @@ _migrateLocalStorage().then(()=>{
     obs.observe(sentinel);
   })();
 });
+updateFlux2UI();
 checkConn();
 loadModels();
 pollStats();
@@ -1589,7 +1590,14 @@ async function loadModels(){
     const _exactMatch=[...ms.options].some(o=>o.value===S.model);
     if(!_exactMatch){
       const _fuzzy=[...ms.options].find(o=>_normPath(o.value)===_normPath(S.model));
-      S.model=_fuzzy?_fuzzy.value:ms.value;
+      if(_fuzzy){
+        S.model=_fuzzy.value;
+      } else if(isFlux2Model(S.model)){
+        const _f2=[...ms.options].find(o=>isFlux2Model(o.value));
+        S.model=_f2?_f2.value:ms.value;
+      } else {
+        S.model=ms.value;
+      }
     }
     ms.value=S.model;
     updateFlux2UI();

@@ -2014,7 +2014,7 @@ def _local_model_files(kind):
             rel = os.path.relpath(os.path.join(dirpath, filename), root)
             if "_hf_cache" in rel:
                 continue
-            models.append(rel.replace("/", "\\"))
+            models.append(rel.replace("\\", "/"))
     return models
 
 
@@ -2036,10 +2036,11 @@ def comfy_models():
     seen = set()
     unet = []
     for model in unet_all:
-        if model in seen or not _is_visible_base_model(model):
+        key = model.replace("\\", "/").lower()
+        if key in seen or not _is_visible_base_model(model):
             continue
-        seen.add(model)
-        unet.append(model)
+        seen.add(key)
+        unet.append(model.replace("\\", "/"))
     if not unet:
         unet = ["flux1-dev.safetensors"]
     raw_cn = _fetch_models("controlnet")
