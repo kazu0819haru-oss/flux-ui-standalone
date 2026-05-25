@@ -352,7 +352,7 @@ def _wf_path(name):
 def _resolve_base_model(model_name=None):
     if model_name and _is_visible_base_model(model_name):
         if _model_file_exists(KONTEXT_MODEL_DIR, model_name) or _model_file_exists(r"C:\AI\ComfyUI\models\unet", model_name):
-            return model_name
+            return _wf_path(model_name)
     return MODEL_CONFIG["unet"]
 
 
@@ -455,7 +455,7 @@ def _chain_loras(wf, loras):
             "inputs": {
                 "model": model_ref,
                 "clip":  clip_ref,
-                "lora_name": lora["name"],
+                "lora_name": _wf_path(lora["name"]),
                 "strength_model": float(lora.get("strength", 1.0)),
                 "strength_clip":  float(lora.get("strength", 1.0)),
             },
