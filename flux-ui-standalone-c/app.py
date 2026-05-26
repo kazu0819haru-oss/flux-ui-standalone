@@ -1875,14 +1875,12 @@ def _seedvr2_custom_node_exists():
 
 
 def _seedvr2_available():
-    """ディレクトリ存在確認 + ComfyUI に実際にノードがロードされているかを確認する。"""
-    if not _seedvr2_custom_node_exists():
-        return False
-    try:
-        info = requests.get(f"{COMFY_URL}/object_info", timeout=3).json()
-        return _SEEDVR2_NODES.issubset(set(info.keys()))
-    except Exception:
-        return True  # ComfyUI 未起動の場合はディレクトリ存在のみで許可
+    """UI availability only checks install presence.
+
+    ComfyUI can still be loading when /api/models is called, so object_info is
+    checked again in /api/video_upscale where a detailed error can be returned.
+    """
+    return _seedvr2_custom_node_exists()
 
 
 def _wan22_model_exists(name):

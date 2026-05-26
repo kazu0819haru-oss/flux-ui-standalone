@@ -22,6 +22,7 @@ class SeedVR2StandaloneSetupTests(unittest.TestCase):
 
         self.assertIn("ComfyUI-SeedVR2_VideoUpscaler", app_py)
         self.assertIn("seedvr2_videoupscaler", app_py)
+        self.assertNotIn("return _SEEDVR2_NODES.issubset(set(info.keys()))", app_py)
 
 
 if __name__ == "__main__":
