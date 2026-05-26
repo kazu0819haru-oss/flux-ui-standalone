@@ -1863,9 +1863,20 @@ def _model_file_exists(folder, name):
 _SEEDVR2_NODES = {"SeedVR2VideoUpscaler", "SeedVR2LoadDiTModel", "SeedVR2LoadVAEModel", "SeedVR2TorchCompileSettings"}
 
 
+def _seedvr2_custom_node_exists():
+    custom_nodes_dir = os.path.join(_COMFYUI_DIR, "custom_nodes")
+    return any(
+        os.path.isdir(os.path.join(custom_nodes_dir, name))
+        for name in (
+            "ComfyUI-SeedVR2_VideoUpscaler",
+            "seedvr2_videoupscaler",
+        )
+    )
+
+
 def _seedvr2_available():
     """ディレクトリ存在確認 + ComfyUI に実際にノードがロードされているかを確認する。"""
-    if not os.path.isdir(os.path.join(_COMFYUI_DIR, "custom_nodes", "ComfyUI-SeedVR2_VideoUpscaler")):
+    if not _seedvr2_custom_node_exists():
         return False
     try:
         info = requests.get(f"{COMFY_URL}/object_info", timeout=3).json()

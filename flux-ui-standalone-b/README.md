@@ -77,5 +77,24 @@ ComfyUI\.venv\Scripts\python.exe -m pip install flask requests Pillow
 
 ## 機能の詳細
 
-`FLUX_UI_説明書.docx` を参照してください。  
+`FLUX_UI_説明書.docx` を参照してください。 
 各機能のスクリーンショット付きで操作手順を説明しています。
+
+---
+
+## SeedVR2 モデル配置
+
+SeedVR2 のカスタムノードは `nightly` ブランチで入ります。モデルは ComfyUI 側の下記フォルダに配置してください。
+
+```text
+C:\AI\ComfyUI\models\SEEDVR2\
+```
+
+この standalone の動画アップスケール workflow が標準で参照するファイル名は次の2つです。
+
+```text
+seedvr2_ema_7b_sharp_fp8_e4m3fn_mixed_block35_fp16.safetensors
+ema_vae_fp16.safetensors
+```
+
+`config.json` の `comfyui_dir` を別の場所にしている場合は、その ComfyUI 配下の `models\SEEDVR2\` に入れてください。

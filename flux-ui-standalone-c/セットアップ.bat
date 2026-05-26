@@ -65,6 +65,7 @@ call :clone_node "comfyui_controlnet_aux"    "https://github.com/Fannovel16/comf
 call :clone_node "ComfyUI-Impact-Pack"       "https://github.com/ltdrdata/ComfyUI-Impact-Pack"
 call :clone_node "ComfyUI-Custom-Scripts"    "https://github.com/pythongosssss/ComfyUI-Custom-Scripts"
 call :clone_node "ComfyUI-VideoHelperSuite"  "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite"
+call :clone_node "ComfyUI-SeedVR2_VideoUpscaler" "https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler" "nightly"
 
 echo カスタムノードのインストール完了。
 :skip_custom_nodes
@@ -80,16 +81,27 @@ exit /b
 :clone_node
 set _NAME=%~1
 set _URL=%~2
+set _BRANCH=%~3
 if exist "%NODES_DIR%\%_NAME%" (
-    echo   スキップ (既存): %_NAME%
-    goto :eof
+    echo   既存ノードを確認中: %_NAME%
+    if not "%_BRANCH%"=="" (
+        git -C "%NODES_DIR%\%_NAME%" fetch origin "%_BRANCH%" --depth=1
+        git -C "%NODES_DIR%\%_NAME%" switch "%_BRANCH%"
+        git -C "%NODES_DIR%\%_NAME%" pull --ff-only origin "%_BRANCH%"
+    )
+    goto :install_node_requirements
 )
 echo   クローン中: %_NAME%
-git clone --depth=1 "%_URL%" "%NODES_DIR%\%_NAME%"
+if "%_BRANCH%"=="" (
+    git clone --depth=1 "%_URL%" "%NODES_DIR%\%_NAME%"
+) else (
+    git clone --depth=1 --branch "%_BRANCH%" --single-branch "%_URL%" "%NODES_DIR%\%_NAME%"
+)
 if errorlevel 1 (
     echo   [警告] クローン失敗: %_NAME%
     goto :eof
 )
+:install_node_requirements
 if exist "%NODES_DIR%\%_NAME%\requirements.txt" (
     echo   依存パッケージをインストール中: %_NAME%
     if "%COMFY_PYTHON%"=="python" (

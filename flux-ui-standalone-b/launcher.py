@@ -245,6 +245,11 @@ CUSTOM_NODES = [
         "name": "ComfyUI-VideoHelperSuite",
         "url": "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite",
     },
+    {
+        "name": "ComfyUI-SeedVR2_VideoUpscaler",
+        "url": "https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler",
+        "branch": "nightly",
+    },
 ]
 
 
@@ -265,9 +270,26 @@ def install_custom_nodes(comfy_dir, python_exe, label_var=None):
 
     for node in CUSTOM_NODES:
         target = os.path.join(custom_nodes_dir, node["name"])
+        branch = node.get("branch")
         if os.path.isdir(target):
-            log(f"スキップ（既存）: {node['name']}")
-            continue
+            log(f"既存ノードを確認: {node['name']}")
+            if branch:
+                try:
+                    subprocess.check_call(
+                        ["git", "-C", target, "fetch", "origin", branch, "--depth=1"],
+                        timeout=180,
+                    )
+                    subprocess.check_call(
+                        ["git", "-C", target, "switch", branch],
+                        timeout=60,
+                    )
+                    subprocess.check_call(
+                        ["git", "-C", target, "pull", "--ff-only", "origin", branch],
+                        timeout=180,
+                    )
+                except Exception as e:
+                    log(f"ブランチ更新失敗: {node['name']}: {e}")
+                    continue
 
         if label_var is not None:
             try:
@@ -275,15 +297,17 @@ def install_custom_nodes(comfy_dir, python_exe, label_var=None):
             except Exception:
                 pass
 
-        log(f"git clone: {node['url']}")
-        try:
-            subprocess.check_call(
-                ["git", "clone", "--depth=1", node["url"], target],
-                timeout=180,
-            )
-        except Exception as e:
-            log(f"クローン失敗: {node['name']}: {e}")
-            continue
+        if not os.path.isdir(target):
+            log(f"git clone: {node['url']}")
+            cmd = ["git", "clone", "--depth=1"]
+            if branch:
+                cmd += ["--branch", branch, "--single-branch"]
+            cmd += [node["url"], target]
+            try:
+                subprocess.check_call(cmd, timeout=180)
+            except Exception as e:
+                log(f"クローン失敗: {node['name']}: {e}")
+                continue
 
         req = os.path.join(target, "requirements.txt")
         if os.path.isfile(req):
