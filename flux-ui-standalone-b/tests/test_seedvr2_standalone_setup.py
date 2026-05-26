@@ -12,6 +12,7 @@ class SeedVR2StandaloneSetupTests(unittest.TestCase):
         self.assertIn("ComfyUI-SeedVR2_VideoUpscaler", launcher_py)
         self.assertIn("https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler", launcher_py)
         self.assertIn('"branch": "nightly"', launcher_py)
+        self.assertIn("install_custom_nodes(comfy_dir, python_exe)", launcher_py)
 
     def test_app_accepts_seedvr2_folder_name_variants(self):
         app_py = (ROOT / "app" / "app.py").read_text(encoding="utf-8", errors="ignore")

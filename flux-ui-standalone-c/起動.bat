@@ -17,6 +17,20 @@ echo Python:  %COMFY_PYTHON%
 echo Port:    %FLASK_PORT%
 echo.
 
+REM --- git pull 後など、セットアップを再実行していない場合も SeedVR2 を補完 ---
+set SEEDVR2_DIR=%COMFY_DIR%\custom_nodes\ComfyUI-SeedVR2_VideoUpscaler
+if not exist "%SEEDVR2_DIR%" (
+    git --version > nul 2>&1
+    if not errorlevel 1 (
+        if not exist "%COMFY_DIR%\custom_nodes" mkdir "%COMFY_DIR%\custom_nodes"
+        echo SeedVR2 nightly ノードをインストール中...
+        git clone --depth=1 --branch nightly --single-branch "https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler" "%SEEDVR2_DIR%"
+        if exist "%SEEDVR2_DIR%\requirements.txt" (
+            "%COMFY_PYTHON%" -m pip install -r "%SEEDVR2_DIR%\requirements.txt" --quiet --disable-pip-version-check
+        )
+    )
+)
+
 REM --- ComfyUI が起動していなければ起動 ---
 powershell -NoProfile -Command "try { (New-Object System.Net.Sockets.TcpClient).Connect('127.0.0.1',8188); exit 0 } catch { exit 1 }" > nul 2>&1
 if errorlevel 1 (

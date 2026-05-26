@@ -273,23 +273,24 @@ def install_custom_nodes(comfy_dir, python_exe, label_var=None):
         branch = node.get("branch")
         if os.path.isdir(target):
             log(f"既存ノードを確認: {node['name']}")
-            if branch:
-                try:
-                    subprocess.check_call(
-                        ["git", "-C", target, "fetch", "origin", branch, "--depth=1"],
-                        timeout=180,
-                    )
-                    subprocess.check_call(
-                        ["git", "-C", target, "switch", branch],
-                        timeout=60,
-                    )
-                    subprocess.check_call(
-                        ["git", "-C", target, "pull", "--ff-only", "origin", branch],
-                        timeout=180,
-                    )
-                except Exception as e:
-                    log(f"ブランチ更新失敗: {node['name']}: {e}")
-                    continue
+            if not branch:
+                continue
+            try:
+                subprocess.check_call(
+                    ["git", "-C", target, "fetch", "origin", branch, "--depth=1"],
+                    timeout=180,
+                )
+                subprocess.check_call(
+                    ["git", "-C", target, "switch", branch],
+                    timeout=60,
+                )
+                subprocess.check_call(
+                    ["git", "-C", target, "pull", "--ff-only", "origin", branch],
+                    timeout=180,
+                )
+            except Exception as e:
+                log(f"ブランチ更新失敗: {node['name']}: {e}")
+                continue
 
         if label_var is not None:
             try:
@@ -415,6 +416,9 @@ def main():
     if not python_exe or not os.path.isfile(python_exe):
         log(f"ComfyUI Python が見つからない → システム Python を使用")
         python_exe = sys.executable
+
+    # git pull 後など、既存設定のまま起動する場合も不足ノードを補完する。
+    install_custom_nodes(comfy_dir, python_exe)
 
     # フリーズ EXE 自身が python_exe になると無限起動するため検出して止める
     if getattr(sys, 'frozen', False):
