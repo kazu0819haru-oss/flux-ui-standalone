@@ -30,17 +30,23 @@ echo config.json を生成しました。
 
 REM --- pip パッケージをインストール ---
 echo.
+REM env_snapshot があれば frozen requirements を優先する
+set REQ_FILE=requirements.txt
+if exist "env_snapshot\requirements.frozen.txt" (
+    echo env_snapshot を検出しました。固定バージョンのパッケージをインストールします。
+    set REQ_FILE=env_snapshot\requirements.frozen.txt
+)
 echo 必要なパッケージをインストール中...
 if "%COMFY_PYTHON%"=="python" (
-    python -m pip install -r requirements.txt
+    python -m pip install -r "%REQ_FILE%"
 ) else (
-    "%COMFY_PYTHON%" -m pip install -r requirements.txt
+    "%COMFY_PYTHON%" -m pip install -r "%REQ_FILE%"
 )
 if errorlevel 1 (
     echo.
     echo [警告] パッケージのインストールに失敗しました。
     echo 手動で以下を実行してください:
-    echo   pip install -r requirements.txt
+    echo   pip install -r %REQ_FILE%
 ) else (
     echo パッケージのインストール完了。
 )
@@ -50,25 +56,77 @@ echo.
 echo カスタムノードをインストール中...
 echo (初回のみ / 数分かかる場合があります)
 
+set NODES_DIR=%COMFY_DIR%\custom_nodes
+if not exist "%NODES_DIR%" mkdir "%NODES_DIR%"
+
+REM SeedVR2: env_snapshot があればコピーを優先（git clone しない）
+if exist "env_snapshot\custom_nodes\ComfyUI-SeedVR2_VideoUpscaler" (
+    echo   env_snapshot から SeedVR2 をコピーします...
+    if exist "%NODES_DIR%\ComfyUI-SeedVR2_VideoUpscaler" (
+        rmdir /s /q "%NODES_DIR%\ComfyUI-SeedVR2_VideoUpscaler"
+    )
+    xcopy /e /i /q "env_snapshot\custom_nodes\ComfyUI-SeedVR2_VideoUpscaler" "%NODES_DIR%\ComfyUI-SeedVR2_VideoUpscaler\"
+    if errorlevel 1 (
+        echo   [警告] SeedVR2 のコピーに失敗しました。
+    ) else (
+        echo   SeedVR2 コピー完了。
+        REM SeedVR2 の依存パッケージをインストール
+        if exist "%NODES_DIR%\ComfyUI-SeedVR2_VideoUpscaler\requirements.txt" (
+            if "%COMFY_PYTHON%"=="python" (
+                python -m pip install -r "%NODES_DIR%\ComfyUI-SeedVR2_VideoUpscaler\requirements.txt" --quiet --disable-pip-version-check
+            ) else (
+                "%COMFY_PYTHON%" -m pip install -r "%NODES_DIR%\ComfyUI-SeedVR2_VideoUpscaler\requirements.txt" --quiet --disable-pip-version-check
+            )
+        )
+    )
+    goto :other_nodes
+)
+
+REM env_snapshot がない場合は git clone
 git --version > nul 2>&1
 if errorlevel 1 (
     echo [警告] git が見つかりません。カスタムノードの自動インストールをスキップします。
     echo   後で手動でインストールするか、ComfyUI Manager をご利用ください。
-    goto :skip_custom_nodes
+    goto :other_nodes
 )
+call :clone_node "ComfyUI-SeedVR2_VideoUpscaler" "https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler" "nightly"
 
-set NODES_DIR=%COMFY_DIR%\custom_nodes
-if not exist "%NODES_DIR%" mkdir "%NODES_DIR%"
+:other_nodes
+REM SeedVR2 以外のノードは git clone（git がある場合のみ）
+git --version > nul 2>&1
+if errorlevel 1 goto :skip_other_nodes
 
 call :clone_node "ComfyUI-GGUF"              "https://github.com/city96/ComfyUI-GGUF"
 call :clone_node "comfyui_controlnet_aux"    "https://github.com/Fannovel16/comfyui_controlnet_aux"
 call :clone_node "ComfyUI-Impact-Pack"       "https://github.com/ltdrdata/ComfyUI-Impact-Pack"
 call :clone_node "ComfyUI-Custom-Scripts"    "https://github.com/pythongosssss/ComfyUI-Custom-Scripts"
 call :clone_node "ComfyUI-VideoHelperSuite"  "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite"
-call :clone_node "ComfyUI-SeedVR2_VideoUpscaler" "https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler" "nightly"
 
+:skip_other_nodes
 echo カスタムノードのインストール完了。
-:skip_custom_nodes
+
+REM --- モデルファイルの確認 ---
+echo.
+echo モデルファイルを確認しています...
+set MODELS_DIR=%COMFY_DIR%\models\SEEDVR2
+set MISSING=0
+if not exist "%MODELS_DIR%\seedvr2_ema_7b_sharp_fp8_e4m3fn_mixed_block35_fp16.safetensors" (
+    set MISSING=1
+    echo   [不足] seedvr2_ema_7b_sharp_fp8_e4m3fn_mixed_block35_fp16.safetensors
+) else (
+    echo   [OK]   seedvr2_ema_7b_sharp_fp8_e4m3fn_mixed_block35_fp16.safetensors
+)
+if not exist "%MODELS_DIR%\ema_vae_fp16.safetensors" (
+    set MISSING=1
+    echo   [不足] ema_vae_fp16.safetensors
+) else (
+    echo   [OK]   ema_vae_fp16.safetensors
+)
+if "%MISSING%"=="1" (
+    echo.
+    echo *** 上記のモデルファイルを以下のフォルダに配置してください ***
+    echo     %MODELS_DIR%
+)
 
 echo.
 echo ========================================

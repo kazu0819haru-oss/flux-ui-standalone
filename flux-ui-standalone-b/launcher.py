@@ -7,6 +7,7 @@ FLUX UI Launcher
 import os
 import sys
 import json
+import shutil
 import subprocess
 import threading
 import time
@@ -20,11 +21,15 @@ if getattr(sys, 'frozen', False):
 else:
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
-APP_DIR     = os.path.join(BASE_DIR, "app")
-APP_PY      = os.path.join(APP_DIR, "app.py")
-REQ_FILE    = os.path.join(APP_DIR, "requirements.txt")
-LOG_PATH    = os.path.join(BASE_DIR, "launcher.log")
+CONFIG_PATH   = os.path.join(BASE_DIR, "config.json")
+APP_DIR       = os.path.join(BASE_DIR, "app")
+APP_PY        = os.path.join(APP_DIR, "app.py")
+REQ_FILE      = os.path.join(APP_DIR, "requirements.txt")
+LOG_PATH      = os.path.join(BASE_DIR, "launcher.log")
+SNAPSHOT_DIR  = os.path.join(BASE_DIR, "env_snapshot")
+FROZEN_REQ    = os.path.join(SNAPSHOT_DIR, "requirements.frozen.txt")
+SNAPSHOT_NODE = os.path.join(SNAPSHOT_DIR, "custom_nodes", "ComfyUI-SeedVR2_VideoUpscaler")
+MODEL_CHECK   = os.path.join(SNAPSHOT_DIR, "model_check.json")
 
 
 def log(msg):
@@ -253,11 +258,26 @@ CUSTOM_NODES = [
 ]
 
 
+def _install_node_reqs(python_exe, target, node_name):
+    req = os.path.join(target, "requirements.txt")
+    if os.path.isfile(req):
+        log(f"pip install: {node_name}")
+        try:
+            subprocess.check_call(
+                [python_exe, "-m", "pip", "install", "-r", req,
+                 "--quiet", "--disable-pip-version-check"],
+                timeout=300,
+            )
+        except Exception as e:
+            log(f"pip install 失敗: {node_name}: {e}")
+
+
 def install_custom_nodes(comfy_dir, python_exe, label_var=None):
-    """必要なカスタムノードを git clone でインストールする（初回のみ）。"""
+    """必要なカスタムノードをインストールする。SeedVR2 は env_snapshot があればコピーを優先する。"""
     custom_nodes_dir = os.path.join(comfy_dir, "custom_nodes")
     os.makedirs(custom_nodes_dir, exist_ok=True)
 
+    has_git = True
     try:
         subprocess.check_call(
             ["git", "--version"],
@@ -265,12 +285,32 @@ def install_custom_nodes(comfy_dir, python_exe, label_var=None):
             timeout=10,
         )
     except Exception:
-        log("git が見つかりません。カスタムノードの自動インストールをスキップします。")
-        return
+        log("git が見つかりません。git clone をスキップします。")
+        has_git = False
 
     for node in CUSTOM_NODES:
         target = os.path.join(custom_nodes_dir, node["name"])
         branch = node.get("branch")
+
+        if label_var is not None:
+            try:
+                label_var.set(f"カスタムノード: {node['name']}")
+            except Exception:
+                pass
+
+        # SeedVR2: env_snapshot があればコピーを優先（git clone しない）
+        if node["name"] == "ComfyUI-SeedVR2_VideoUpscaler" and os.path.isdir(SNAPSHOT_NODE):
+            log(f"env_snapshot から SeedVR2 をコピー: {target}")
+            if os.path.isdir(target):
+                shutil.rmtree(target)
+            shutil.copytree(SNAPSHOT_NODE, target)
+            _install_node_reqs(python_exe, target, node["name"])
+            continue
+
+        if not has_git:
+            log(f"スキップ (git なし): {node['name']}")
+            continue
+
         if os.path.isdir(target):
             log(f"既存ノードを確認: {node['name']}")
             if not branch:
@@ -290,49 +330,37 @@ def install_custom_nodes(comfy_dir, python_exe, label_var=None):
                 )
             except Exception as e:
                 log(f"ブランチ更新失敗: {node['name']}: {e}")
-                continue
+            continue
 
-        if label_var is not None:
-            try:
-                label_var.set(f"カスタムノード: {node['name']}")
-            except Exception:
-                pass
+        log(f"git clone: {node['url']}")
+        cmd = ["git", "clone", "--depth=1"]
+        if branch:
+            cmd += ["--branch", branch, "--single-branch"]
+        cmd += [node["url"], target]
+        try:
+            subprocess.check_call(cmd, timeout=180)
+        except Exception as e:
+            log(f"クローン失敗: {node['name']}: {e}")
+            continue
 
-        if not os.path.isdir(target):
-            log(f"git clone: {node['url']}")
-            cmd = ["git", "clone", "--depth=1"]
-            if branch:
-                cmd += ["--branch", branch, "--single-branch"]
-            cmd += [node["url"], target]
-            try:
-                subprocess.check_call(cmd, timeout=180)
-            except Exception as e:
-                log(f"クローン失敗: {node['name']}: {e}")
-                continue
-
-        req = os.path.join(target, "requirements.txt")
-        if os.path.isfile(req):
-            log(f"pip install: {node['name']}")
-            try:
-                subprocess.check_call(
-                    [python_exe, "-m", "pip", "install", "-r", req,
-                     "--quiet", "--disable-pip-version-check"],
-                    timeout=300,
-                )
-            except Exception as e:
-                log(f"pip install 失敗: {node['name']}: {e}")
+        _install_node_reqs(python_exe, target, node["name"])
 
     log("カスタムノードのインストール完了。")
 
 
 def install_requirements(python_exe):
-    """requirements.txt のパッケージをインストール。"""
-    if not os.path.isfile(REQ_FILE):
+    """requirements.txt のパッケージをインストール。env_snapshot があれば frozen を優先する。"""
+    if os.path.isfile(FROZEN_REQ):
+        req_file = FROZEN_REQ
+        log("env_snapshot/requirements.frozen.txt を使用します。")
+    elif os.path.isfile(REQ_FILE):
+        req_file = REQ_FILE
+    else:
         return True
     log("依存パッケージをインストール中...")
     try:
         subprocess.check_call(
-            [python_exe, "-m", "pip", "install", "-r", REQ_FILE,
+            [python_exe, "-m", "pip", "install", "-r", req_file,
              "--quiet", "--disable-pip-version-check"],
             timeout=300,
         )
@@ -345,6 +373,41 @@ def install_requirements(python_exe):
                    f"Python: {python_exe}\n\n{e}\n\n"
                    f"詳細は launcher.log を確認してください。")
         return False
+
+
+def check_models(comfy_dir):
+    """model_check.json に記載のモデルファイルが揃っているか確認し、不足があれば警告を出す。"""
+    if not os.path.isfile(MODEL_CHECK):
+        return
+    try:
+        with open(MODEL_CHECK, encoding="utf-8") as f:
+            mc = json.load(f)
+    except Exception as e:
+        log(f"model_check.json 読み込み失敗: {e}")
+        return
+
+    models_dir = os.path.join(comfy_dir, mc.get("models_dir", "models/SEEDVR2").replace("/", os.sep))
+    required = mc.get("required_files", [])
+    if not required:
+        return
+
+    missing = [fn for fn in required if not os.path.isfile(os.path.join(models_dir, fn))]
+    if not missing:
+        log("モデルファイル確認 OK")
+        return
+
+    present = [fn for fn in required if fn not in missing]
+    lines = []
+    for fn in required:
+        mark = "✗" if fn in missing else "✓"
+        lines.append(f"  {mark} {fn}")
+    body = "\n".join(lines)
+    msg = (
+        f"以下のモデルファイルが見つかりませんでした。\n"
+        f"{models_dir}\nに配置してください:\n\n{body}"
+    )
+    log(f"モデル不足: {missing}")
+    show_error("モデルファイルの確認", msg)
 
 
 def show_progress_window(msg="起動中..."):
@@ -410,6 +473,8 @@ def main():
         )
         install_custom_nodes(cfg["comfyui_dir"], python_exe)
         close_prog3()
+
+        check_models(cfg["comfyui_dir"])
 
     comfy_dir  = cfg.get("comfyui_dir", r"C:\AI\ComfyUI")
     python_exe = cfg.get("comfyui_python") or find_python(comfy_dir)

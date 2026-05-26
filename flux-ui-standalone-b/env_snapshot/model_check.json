@@ -1,0 +1,7 @@
+{
+  "models_dir": "models/SEEDVR2",
+  "required_files": [
+    "seedvr2_ema_7b_sharp_fp8_e4m3fn_mixed_block35_fp16.safetensors",
+    "ema_vae_fp16.safetensors"
+  ]
+}

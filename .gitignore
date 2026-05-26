@@ -11,3 +11,6 @@ __pycache__/
 # Windows
 Thumbs.db
 desktop.ini
+
+# env_snapshot 内の git メタデータは追跡しない
+env_snapshot/custom_nodes/*/.git
