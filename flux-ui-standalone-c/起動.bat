@@ -17,23 +17,26 @@ echo Python:  %COMFY_PYTHON%
 echo Port:    %FLASK_PORT%
 echo.
 
-REM --- git pull 後など、セットアップを再実行していない場合も SeedVR2 を補完 ---
-set SEEDVR2_DIR=%COMFY_DIR%\custom_nodes\ComfyUI-SeedVR2_VideoUpscaler
+REM --- 起動時に必要カスタムノードを自動同期 ---
+set NODES_DIR=%COMFY_DIR%\custom_nodes
+set SEEDVR2_DIR=%NODES_DIR%\ComfyUI-SeedVR2_VideoUpscaler
 git --version > nul 2>&1
 if not errorlevel 1 (
-    if exist "%SEEDVR2_DIR%" (
-        echo SeedVR2 nightly ノードを更新中...
-        git -C "%SEEDVR2_DIR%" fetch origin nightly --depth=1
-        git -C "%SEEDVR2_DIR%" switch nightly
-        git -C "%SEEDVR2_DIR%" pull --ff-only origin nightly
-    ) else (
-        if not exist "%COMFY_DIR%\custom_nodes" mkdir "%COMFY_DIR%\custom_nodes"
-        echo SeedVR2 nightly ノードをインストール中...
-        git clone --depth=1 --branch nightly --single-branch "https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler" "%SEEDVR2_DIR%"
-    )
-    if exist "%SEEDVR2_DIR%\requirements.txt" (
-        "%COMFY_PYTHON%" -m pip install -r "%SEEDVR2_DIR%\requirements.txt" --quiet --disable-pip-version-check
-    )
+    if not exist "%NODES_DIR%" mkdir "%NODES_DIR%"
+    call :sync_node "ComfyUI-GGUF" "https://github.com/city96/ComfyUI-GGUF"
+    call :sync_node "comfyui_controlnet_aux" "https://github.com/Fannovel16/comfyui_controlnet_aux"
+    call :sync_node "ComfyUI-Impact-Pack" "https://github.com/ltdrdata/ComfyUI-Impact-Pack"
+    call :sync_node "ComfyUI-Custom-Scripts" "https://github.com/pythongosssss/ComfyUI-Custom-Scripts"
+    call :sync_node "ComfyUI-VideoHelperSuite" "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite"
+    call :sync_node "ComfyUI-SeedVR2_VideoUpscaler" "https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler" "nightly"
+)
+
+REM --- 既にComfyUIが起動中でも、必要ノードが未ロードなら再起動して読み込ませる ---
+powershell -NoProfile -Command "$required=@('LoadVideo','GetVideoComponents','CreateVideo','SaveVideo','SeedVR2VideoUpscaler','SeedVR2LoadDiTModel','SeedVR2LoadVAEModel','SeedVR2TorchCompileSettings'); try { $o=Invoke-RestMethod -Uri 'http://127.0.0.1:8188/object_info' -TimeoutSec 5; $names=$o.PSObject.Properties.Name; foreach($n in $required){ if($names -notcontains $n){ exit 2 } }; exit 0 } catch { exit 1 }" > nul 2>&1
+if errorlevel 2 (
+    echo ComfyUIを再起動してカスタムノードを読み込み直します...
+    powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*main.py*' -and $_.CommandLine -like '*ComfyUI*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"
+    timeout /t 3 /nobreak > nul
 )
 
 REM --- ComfyUI が起動していなければ起動 ---
@@ -74,3 +77,29 @@ echo.
 echo FLUX UI started. (Flask runs in background)
 echo To stop: close the minimized CMD window running Flask.
 pause
+exit /b
+
+:sync_node
+set _NAME=%~1
+set _URL=%~2
+set _BRANCH=%~3
+set _TARGET=%NODES_DIR%\%_NAME%
+if exist "%_TARGET%" (
+    echo Custom node update: %_NAME%
+    if not "%_BRANCH%"=="" (
+        git -C "%_TARGET%" fetch origin "%_BRANCH%" --depth=1
+        git -C "%_TARGET%" switch "%_BRANCH%"
+        git -C "%_TARGET%" pull --ff-only origin "%_BRANCH%"
+    )
+) else (
+    echo Custom node install: %_NAME%
+    if "%_BRANCH%"=="" (
+        git clone --depth=1 "%_URL%" "%_TARGET%"
+    ) else (
+        git clone --depth=1 --branch "%_BRANCH%" --single-branch "%_URL%" "%_TARGET%"
+    )
+)
+if exist "%_TARGET%\requirements.txt" (
+    "%COMFY_PYTHON%" -m pip install -r "%_TARGET%\requirements.txt" --quiet --disable-pip-version-check
+)
+goto :eof

@@ -14,8 +14,11 @@ class SeedVR2StandaloneSetupTests(unittest.TestCase):
         self.assertIn("https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler", setup_bat)
         self.assertIn("nightly", setup_bat)
         self.assertIn("ComfyUI-SeedVR2_VideoUpscaler", launch_bat)
+        self.assertIn("ComfyUI-VideoHelperSuite", launch_bat)
         self.assertIn("nightly", launch_bat)
-        self.assertIn('git -C "%SEEDVR2_DIR%" switch nightly', launch_bat)
+        self.assertIn('call :sync_node "ComfyUI-SeedVR2_VideoUpscaler"', launch_bat)
+        self.assertIn("SeedVR2VideoUpscaler", launch_bat)
+        self.assertIn("Stop-Process", launch_bat)
 
     def test_app_accepts_seedvr2_folder_name_variants(self):
         app_py = (ROOT / "app.py").read_text(encoding="utf-8", errors="ignore")
