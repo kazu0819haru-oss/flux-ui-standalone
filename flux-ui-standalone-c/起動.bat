@@ -19,15 +19,20 @@ echo.
 
 REM --- git pull 後など、セットアップを再実行していない場合も SeedVR2 を補完 ---
 set SEEDVR2_DIR=%COMFY_DIR%\custom_nodes\ComfyUI-SeedVR2_VideoUpscaler
-if not exist "%SEEDVR2_DIR%" (
-    git --version > nul 2>&1
-    if not errorlevel 1 (
+git --version > nul 2>&1
+if not errorlevel 1 (
+    if exist "%SEEDVR2_DIR%" (
+        echo SeedVR2 nightly ノードを更新中...
+        git -C "%SEEDVR2_DIR%" fetch origin nightly --depth=1
+        git -C "%SEEDVR2_DIR%" switch nightly
+        git -C "%SEEDVR2_DIR%" pull --ff-only origin nightly
+    ) else (
         if not exist "%COMFY_DIR%\custom_nodes" mkdir "%COMFY_DIR%\custom_nodes"
         echo SeedVR2 nightly ノードをインストール中...
         git clone --depth=1 --branch nightly --single-branch "https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler" "%SEEDVR2_DIR%"
-        if exist "%SEEDVR2_DIR%\requirements.txt" (
-            "%COMFY_PYTHON%" -m pip install -r "%SEEDVR2_DIR%\requirements.txt" --quiet --disable-pip-version-check
-        )
+    )
+    if exist "%SEEDVR2_DIR%\requirements.txt" (
+        "%COMFY_PYTHON%" -m pip install -r "%SEEDVR2_DIR%\requirements.txt" --quiet --disable-pip-version-check
     )
 )
 

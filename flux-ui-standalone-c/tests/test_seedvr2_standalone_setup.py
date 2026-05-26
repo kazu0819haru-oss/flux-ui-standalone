@@ -15,6 +15,7 @@ class SeedVR2StandaloneSetupTests(unittest.TestCase):
         self.assertIn("nightly", setup_bat)
         self.assertIn("ComfyUI-SeedVR2_VideoUpscaler", launch_bat)
         self.assertIn("nightly", launch_bat)
+        self.assertIn('git -C "%SEEDVR2_DIR%" switch nightly', launch_bat)
 
     def test_app_accepts_seedvr2_folder_name_variants(self):
         app_py = (ROOT / "app.py").read_text(encoding="utf-8", errors="ignore")
