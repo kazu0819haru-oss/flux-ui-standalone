@@ -1620,7 +1620,16 @@ def video_upscale():
                                "SeedVR2TorchCompileSettings", "CreateVideo", "SaveVideo")
                    if n not in info]
         if missing:
-            return jsonify({"error": "SeedVR2/Videoノードが未ロードです。ComfyUIを再起動してください: " + ", ".join(missing)}), 400
+            seedvr2_only = all("SeedVR2" in n for n in missing)
+            if seedvr2_only:
+                msg = ("SeedVR2プラグインの読み込みに失敗しています。"
+                       "ComfyUIのコンソールでエラーを確認し、"
+                       "必要なら ComfyUI-SeedVR2_VideoUpscaler フォルダ内で "
+                       "pip install -r requirements.txt を実行してください。"
+                       " 未ロード: " + ", ".join(missing))
+            else:
+                msg = "SeedVR2/Videoノードが未ロードです。ComfyUIを再起動してください: " + ", ".join(missing)
+            return jsonify({"error": msg}), 400
     except requests.ConnectionError:
         return jsonify({"error": "ComfyUIに接続できません"}), 503
     except Exception:
@@ -1849,6 +1858,20 @@ def build_controlnet_workflow(control_image_name, prompt, width, height, steps, 
 
 def _model_file_exists(folder, name):
     return bool(name) and os.path.exists(_local_model_path(folder, name))
+
+
+_SEEDVR2_NODES = {"SeedVR2VideoUpscaler", "SeedVR2LoadDiTModel", "SeedVR2LoadVAEModel", "SeedVR2TorchCompileSettings"}
+
+
+def _seedvr2_available():
+    """ディレクトリ存在確認 + ComfyUI に実際にノードがロードされているかを確認する。"""
+    if not os.path.isdir(os.path.join(_COMFYUI_DIR, "custom_nodes", "ComfyUI-SeedVR2_VideoUpscaler")):
+        return False
+    try:
+        info = requests.get(f"{COMFY_URL}/object_info", timeout=3).json()
+        return _SEEDVR2_NODES.issubset(set(info.keys()))
+    except Exception:
+        return True  # ComfyUI 未起動の場合はディレクトリ存在のみで許可
 
 
 def _wan22_model_exists(name):
@@ -2120,9 +2143,7 @@ def comfy_models():
         "redux_available":    _model_file_exists(REDUX_MODEL_DIR, REDUX_MODEL) and
                               _model_file_exists(REDUX_CLIP_DIR, REDUX_CLIP_MODEL),
         "upscaler_available": _model_file_exists(CN_UPSCALER_DIR, CN_UPSCALER_MODEL),
-        "video_upscale_available": os.path.isdir(
-            os.path.join(_COMFYUI_DIR, "custom_nodes", "ComfyUI-SeedVR2_VideoUpscaler")
-        ),
+        "video_upscale_available": _seedvr2_available(),
         "fill_available":     _model_file_exists(FILL_MODEL_DIR, FILL_MODEL),
         "wan22_available": (
             any(_wan22_model_exists(n) for n in WAN22_HIGH_UNET_CANDIDATES) and
