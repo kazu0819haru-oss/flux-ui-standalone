@@ -10,6 +10,7 @@ psutil==7.2.2
 einops==0.8.2
 omegaconf==2.3.0
 diffusers==0.38.0
+transformers==4.57.1
 peft==0.19.1
 rotary-embedding-torch==0.8.9
 opencv-python==4.13.0.92
