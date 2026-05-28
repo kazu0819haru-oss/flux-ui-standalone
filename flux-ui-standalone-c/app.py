@@ -282,7 +282,7 @@ _LOGIN_HTML = """<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>TOYOTA Creative Engine — ログイン</title>
+  <title>Toyota Ai Engine — ログイン</title>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{background:#070707;color:#fff;font-family:system-ui,sans-serif;
@@ -307,7 +307,7 @@ _LOGIN_HTML = """<!DOCTYPE html>
 </head>
 <body>
   <div class="card">
-    <div class="logo">FLUX<span>.</span></div>
+    <div class="logo">Toyota Ai Engine</div>
     <form method="POST" style="display:flex;flex-direction:column;gap:1.1rem">
       <div>
         <label>パスワード</label>
@@ -3531,7 +3531,7 @@ if __name__ == "__main__":
     _gallery_conn().close()          # テーブル作成
     _scan_gallery_outputs()          # 既存ファイルをDBへ
     print("=" * 52)
-    print("  FLUX UI  →  http://localhost:5000")
+    print("  Toyota Ai Engine  →  http://localhost:5000")
     print(f"  ComfyUI  →  {COMFY_URL}")
     print(f"  モデル   →  {MODEL_CONFIG['unet']}")
     print(f"  自動終了 →  {'有効' if _AUTO_CLOSE else '無効'}")

@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 > nul
 echo ========================================
-echo   TOYOTA Creative Engine 起動中...
+echo   Toyota Ai Engine 起動中...
 echo ========================================
 
 REM --- config.json を読む（PowerShell で JSON パース）---
@@ -61,7 +61,7 @@ start "" /min cmd /c "cd /d "%~dp0" && "%COMFY_PYTHON%" app.py"
 REM --- splash.html がポーリングしてリダイレクトするためブラウザ起動は不要 ---
 
 echo.
-echo TOYOTA Creative Engine started. (Flask runs in background)
+echo Toyota Ai Engine started. (Flask runs in background)
 echo To stop: close the minimized CMD window running Flask.
 pause
 exit /b

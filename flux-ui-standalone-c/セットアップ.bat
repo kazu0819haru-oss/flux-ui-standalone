@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 > nul
 echo ========================================
-echo   TOYOTA Creative Engine セットアップ
+echo   Toyota Ai Engine セットアップ
 echo ========================================
 echo.
 
