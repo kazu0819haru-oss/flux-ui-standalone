@@ -58,20 +58,7 @@ set COMFYUI_DIR=%COMFY_DIR%
 set COMFYUI_PYTHON=%COMFY_PYTHON%
 start "" /min cmd /c "cd /d "%~dp0" && "%COMFY_PYTHON%" app.py"
 
-REM --- ポート待機 ---
-echo ブラウザを開くまで待機中...
-timeout /t 4 /nobreak > nul
-
-:WAIT_LOOP
-powershell -NoProfile -Command "try { (New-Object System.Net.Sockets.TcpClient).Connect('127.0.0.1',%FLASK_PORT%); exit 0 } catch { exit 1 }" > nul 2>&1
-if errorlevel 1 (
-    timeout /t 2 /nobreak > nul
-    goto WAIT_LOOP
-)
-
-REM --- ブラウザを開く ---
-echo ブラウザを開いています: http://localhost:%FLASK_PORT%/loading
-start "" "http://localhost:%FLASK_PORT%/loading"
+REM --- splash.html がポーリングしてリダイレクトするためブラウザ起動は不要 ---
 
 echo.
 echo FLUX UI started. (Flask runs in background)
