@@ -487,6 +487,16 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .settings-row .sr-sub{font-size:.7rem;color:var(--text4);margin-top:.18rem}
 .settings-row input[type=text],.settings-row input[type=number]{background:var(--bg2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'Outfit',sans-serif;font-size:.78rem;padding:.35rem .55rem;outline:none;width:160px}
 .settings-row input[type=text]:focus,.settings-row input[type=number]:focus{border-color:var(--accent)}
+.accent-swatches{display:flex;gap:.5rem;flex-wrap:wrap;padding:.2rem 0}
+.accent-swatch{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;outline:none;transition:transform .15s,box-shadow .15s}
+.accent-swatch:hover{transform:scale(1.14)}
+.accent-swatch.active{box-shadow:0 0 0 2px var(--bg1),0 0 0 4.5px var(--text2)}
+.help-card{display:flex;align-items:center;gap:.9rem;padding:.8rem 1rem;background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-top:.2rem}
+.help-avatar{width:40px;height:40px;border-radius:50%;background:var(--accent-d);border:1.5px solid var(--accent);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;flex-shrink:0;font-family:'Bricolage Grotesque',sans-serif}
+.help-name{font-size:.88rem;font-weight:600;color:var(--text);margin-bottom:.1rem}
+.help-role{font-size:.68rem;color:var(--text3);margin-bottom:.35rem}
+.help-email{font-size:.7rem;color:var(--text3);text-decoration:none;transition:color .15s;font-family:'JetBrains Mono',monospace}
+.help-email:hover{color:var(--accent)}
 .toggle-sw{position:relative;width:42px;height:22px;background:var(--bg3);border-radius:99px;cursor:pointer;transition:background .2s;border:1px solid var(--border2)}
 .toggle-sw::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;background:var(--text2);border-radius:50%;transition:all .2s}
 .toggle-sw.on{background:var(--accent)}
@@ -1203,6 +1213,17 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
           <div><div class="sr-label">テーマ</div><div class="sr-sub">ダーク / ライト</div></div>
           <div class="toggle-sw" id="setTheme" onclick="toggleTheme();syncSettingsUI()"></div>
         </div>
+        <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:.6rem">
+          <div class="sr-label">アクセントカラー</div>
+          <div class="accent-swatches">
+            <button class="accent-swatch" data-accent="toyota-red" style="background:#E60012" title="Toyota Red" onclick="applyAccent('toyota-red')"></button>
+            <button class="accent-swatch" data-accent="lime"       style="background:#bef264" title="Lime"       onclick="applyAccent('lime')"></button>
+            <button class="accent-swatch" data-accent="sky"        style="background:#38bdf8" title="Sky Blue"   onclick="applyAccent('sky')"></button>
+            <button class="accent-swatch" data-accent="violet"     style="background:#a855f7" title="Violet"     onclick="applyAccent('violet')"></button>
+            <button class="accent-swatch" data-accent="amber"      style="background:#fbbf24" title="Amber"      onclick="applyAccent('amber')"></button>
+            <button class="accent-swatch" data-accent="rose"       style="background:#f43f5e" title="Rose"       onclick="applyAccent('rose')"></button>
+          </div>
+        </div>
       </div>
       <div class="settings-sec">
         <h3>生成のデフォルト</h3>
@@ -1238,11 +1259,13 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
         </div>
       </div>
       <div class="settings-sec">
-        <h3>ヘルプ・お問い合わせ</h3>
-        <div class="settings-row" style="border:none;padding:.3rem 0">
+        <h3>ヘルプ</h3>
+        <div class="help-card">
+          <div class="help-avatar">富</div>
           <div>
-            <div class="sr-label">困ったときは</div>
-            <div class="sr-sub" style="margin-top:.35rem;line-height:1.6">ID富樫までご連絡ください<br><a href="mailto:kazutaka_togashi@mail.toyota.co.jp" style="color:var(--accent);text-decoration:none;font-size:.72rem">kazutaka_togashi@mail.toyota.co.jp</a></div>
+            <div class="help-name">ID 富樫</div>
+            <div class="help-role">お問い合わせ担当</div>
+            <a class="help-email" href="mailto:kazutaka_togashi@mail.toyota.co.jp">kazutaka_togashi@mail.toyota.co.jp</a>
           </div>
         </div>
       </div>
@@ -1469,6 +1492,33 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 </div>
 
 <script>
+// ── Accent colour presets ─────────────────────────────────────
+// Must be declared before applyTheme() is called on boot.
+const ACCENT_PRESETS={
+  'toyota-red':{label:'Toyota Red',dark:['#E60012','#cc0010','rgba(230,0,18,.08)','rgba(230,0,18,.18)','rgba(230,0,18,.4)'],  light:['#cc0010','#b5000e','rgba(204,0,16,.08)','rgba(204,0,16,.18)','rgba(204,0,16,.3)']},
+  'lime':      {label:'Lime',      dark:['#bef264','#a3e635','rgba(190,242,100,.08)','rgba(190,242,100,.18)','rgba(190,242,100,.4)'],light:['#65a30d','#4d7c0f','rgba(101,163,13,.08)','rgba(101,163,13,.18)','rgba(101,163,13,.3)']},
+  'sky':       {label:'Sky Blue',  dark:['#38bdf8','#0ea5e9','rgba(56,189,248,.08)','rgba(56,189,248,.18)','rgba(56,189,248,.4)'],  light:['#0284c7','#0369a1','rgba(2,132,199,.08)','rgba(2,132,199,.18)','rgba(2,132,199,.3)']},
+  'violet':    {label:'Violet',    dark:['#a855f7','#9333ea','rgba(168,85,247,.08)','rgba(168,85,247,.18)','rgba(168,85,247,.4)'],  light:['#7c3aed','#6d28d9','rgba(124,58,237,.08)','rgba(124,58,237,.18)','rgba(124,58,237,.3)']},
+  'amber':     {label:'Amber',     dark:['#fbbf24','#f59e0b','rgba(251,191,36,.08)','rgba(251,191,36,.18)','rgba(251,191,36,.4)'],  light:['#d97706','#b45309','rgba(217,119,6,.08)','rgba(217,119,6,.18)','rgba(217,119,6,.3)']},
+  'rose':      {label:'Rose',      dark:['#f43f5e','#e11d48','rgba(244,63,94,.08)','rgba(244,63,94,.18)','rgba(244,63,94,.4)'],     light:['#e11d48','#be123c','rgba(225,29,72,.08)','rgba(225,29,72,.18)','rgba(225,29,72,.3)']},
+};
+function applyAccent(id){
+  const preset=ACCENT_PRESETS[id]||ACCENT_PRESETS['toyota-red'];
+  const isDark=(document.documentElement.dataset.theme||'dark')!=='light';
+  const[a,a2,ad,ag,aglow]=isDark?preset.dark:preset.light;
+  const r=document.documentElement;
+  r.style.setProperty('--accent',a);
+  r.style.setProperty('--accent2',a2);
+  r.style.setProperty('--accent-d',ad);
+  r.style.setProperty('--accent-g',ag);
+  r.style.setProperty('--accent-glow',aglow);
+  if(typeof S!=='undefined'){
+    S.settings.accent=id;
+    localStorage.setItem('flux_settings',JSON.stringify(S.settings));
+  }
+  document.querySelectorAll('.accent-swatch').forEach(el=>el.classList.toggle('active',el.dataset.accent===id));
+}
+
 // ── State ─────────────────────────────────────────────────────
 const S = {
   w:1024, h:1024, batch:1, steps:20, cfg:1.0, variations:1,
@@ -1484,7 +1534,7 @@ const S = {
   history: JSON.parse(localStorage.getItem('flux_hist')||'[]'),
   tags: JSON.parse(localStorage.getItem('flux_tags')||'{}'),
   presets: JSON.parse(localStorage.getItem('flux_presets')||'[]'),
-  settings: JSON.parse(localStorage.getItem('flux_settings')||'{"autoTr":true,"autoTag":false,"theme":"dark"}'),
+  settings: JSON.parse(localStorage.getItem('flux_settings')||'{"autoTr":true,"autoTag":false,"theme":"dark","accent":"toyota-red"}'),
   modalImg: null, mode:'single',
   jpTimer: null, lastJpText: '', _lastTranslated: '',
   _loraModels: [], _cnModels: [],
@@ -3219,12 +3269,14 @@ function toggleTheme(){
   document.getElementById('themeIco').outerHTML = nxt==='dark'
     ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="themeIco"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
     : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="themeIco"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+  applyAccent(S.settings.accent||'toyota-red');
 }
 function applyTheme(){
   document.documentElement.dataset.theme = S.settings.theme || 'dark';
   if(S.settings.theme==='light'){
     document.getElementById('themeIco').outerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="themeIco"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
   }
+  applyAccent(S.settings.accent||'toyota-red');
 }
 function openSettings(){
   document.getElementById('settingsModal').classList.add('open');
@@ -3238,6 +3290,8 @@ function syncSettingsUI(){
   document.getElementById('setComfyURL').value=S.settings.comfyURL||'http://127.0.0.1:8188';
   document.getElementById('setAutoTr').classList.toggle('on', S.settings.autoTr!==false);
   document.getElementById('setAutoTag').classList.toggle('on', !!S.settings.autoTag);
+  const accent=S.settings.accent||'toyota-red';
+  document.querySelectorAll('.accent-swatch').forEach(el=>el.classList.toggle('active',el.dataset.accent===accent));
 }
 function closeSettings(){ document.getElementById('settingsModal').classList.remove('open'); }
 function saveSettings(){
