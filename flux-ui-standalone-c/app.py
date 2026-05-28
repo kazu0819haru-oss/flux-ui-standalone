@@ -1232,7 +1232,9 @@ def loading_page():
 
 @app.route("/api/ping")
 def ping():
-    return jsonify({"ok": True})
+    resp = jsonify({"ok": True})
+    resp.headers["Access-Control-Allow-Origin"] = "null"
+    return resp
 
 
 @app.route("/api/health")
