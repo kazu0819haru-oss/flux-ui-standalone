@@ -229,15 +229,11 @@
     }, 600);
   }
 
-  async function poll() {
-    try {
-      const r = await fetch(base + '/api/ping', {
-        cache: 'no-store',
-        signal: AbortSignal.timeout(2000),
-      });
-      if (r.ok) { doRedirect(); return; }
-    } catch {}
-    setTimeout(poll, 700);
+  function poll() {
+    const img = new Image();
+    img.onload  = doRedirect;
+    img.onerror = () => setTimeout(poll, 700);
+    img.src = base + '/api/ping.png?' + Date.now();
   }
 
   poll();

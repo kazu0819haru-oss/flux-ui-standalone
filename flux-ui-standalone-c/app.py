@@ -238,7 +238,15 @@ else:
         _f.write(_sk)
     app.secret_key = _sk
 
-_AUTH_EXEMPT = {"login_page", "logout", "loading_page", "ping", "health", "keepalive", "restart_comfy_api"}
+_AUTH_EXEMPT = {"login_page", "logout", "loading_page", "ping", "ping_png", "health", "keepalive", "restart_comfy_api"}
+
+# 1x1 透明 GIF（CORS なしでサーバー起動検知用）
+_PING_GIF = bytes([
+    0x47,0x49,0x46,0x38,0x39,0x61,0x01,0x00,0x01,0x00,0x80,0x00,0x00,
+    0xFF,0xFF,0xFF,0x00,0x00,0x00,0x21,0xF9,0x04,0x01,0x00,0x00,0x01,
+    0x00,0x2C,0x00,0x00,0x00,0x00,0x01,0x00,0x01,0x00,0x00,0x02,0x02,
+    0x4C,0x01,0x00,0x3B,
+])
 _ACCESS_LOG  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "access.log")
 
 def _log_access(status: str, note: str = ""):
@@ -1232,9 +1240,12 @@ def loading_page():
 
 @app.route("/api/ping")
 def ping():
-    resp = jsonify({"ok": True})
-    resp.headers["Access-Control-Allow-Origin"] = "null"
-    return resp
+    return jsonify({"ok": True})
+
+
+@app.route("/api/ping.png")
+def ping_png():
+    return Response(_PING_GIF, mimetype="image/gif")
 
 
 @app.route("/api/health")
