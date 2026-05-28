@@ -282,7 +282,7 @@ _LOGIN_HTML = """<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>FLUX UI — ログイン</title>
+  <title>TOYOTA Creative Engine — ログイン</title>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{background:#070707;color:#fff;font-family:system-ui,sans-serif;

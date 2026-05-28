@@ -2,7 +2,7 @@
 <html lang="ja" data-theme="dark"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>FLUX</title>
+<title>TOYOTA Creative Engine</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,600;12..96,800&amp;family=Outfit:wght@200;300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
@@ -816,7 +816,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
   <button class="hd-icon" id="drawerToggleHd" onclick="toggleDrawer()" title="設定パネル">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
   </button>
-  <div class="logo">FLUX<em>.</em></div>
+  <div class="logo" style="font-size:.9rem;letter-spacing:-.02em">TOYOTA Creative<em> Engine</em></div>
   <div class="hd-sep"></div>
   <select class="hd-sel" id="modelSel" onchange="setModel(this.value)"><option value="flux1-dev.safetensors">FLUX.1 dev</option><option value="flux1-krea-dev.safetensors">FLUX.1 Krea</option><option value="flux2\flux2_dev_fp8mixed.safetensors">Flux2</option><option value="wan22">Wan2.2 動画</option></select>
   <div class="hd-space"></div>
@@ -843,7 +843,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 <!-- Settings Drawer -->
 <aside class="drawer" id="drawer">
   <div class="drawer-hd">
-    <span class="drawer-logo">FLUX<em>.</em> 設定</span>
+    <span class="drawer-logo" style="font-size:.82rem">TOYOTA Creative Engine 設定</span>
     <button class="hd-icon" style="width:28px;height:28px;border-radius:7px" onclick="closeDrawer()">✕</button>
   </div>
   <div class="drawer-body">
@@ -1237,6 +1237,15 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
           <div class="toggle-sw" id="setAutoTag" onclick="this.classList.toggle('on')"></div>
         </div>
       </div>
+      <div class="settings-sec">
+        <h3>ヘルプ・お問い合わせ</h3>
+        <div class="settings-row" style="border:none;padding:.3rem 0">
+          <div>
+            <div class="sr-label">困ったときは</div>
+            <div class="sr-sub" style="margin-top:.35rem;line-height:1.6">ID富樫までご連絡ください<br><a href="mailto:kazutaka_togashi@mail.toyota.co.jp" style="color:var(--accent);text-decoration:none;font-size:.72rem">kazutaka_togashi@mail.toyota.co.jp</a></div>
+          </div>
+        </div>
+      </div>
       <div style="display:flex;gap:.5rem;justify-content:flex-end;padding-top:.5rem">
         <button class="editor-btn sec" onclick="closeSettings()">閉じる</button>
         <button class="editor-btn" onclick="saveSettings()">保存</button>
@@ -1493,9 +1502,10 @@ _migrateLocalStorage().then(()=>{
   (function(){
     const sentinel=document.getElementById('galleryBottom');
     if(!sentinel) return;
+    const canvas=document.getElementById('canvas');
     const obs=new IntersectionObserver(entries=>{
       if(entries[0].isIntersecting && S.tab==='all') loadGallery(false);
-    },{rootMargin:'200px'});
+    },{root:canvas, rootMargin:'200px'});
     obs.observe(sentinel);
   })();
 });
@@ -2693,7 +2703,20 @@ async function loadGallery(reset=false){
       newImgs.forEach(img=>grid.appendChild(makeCard(img,S.imgs.indexOf(img))));
     }
   }catch(e){ console.warn('gallery load failed',e); }
-  finally{ S.galleryLoading=false; }
+  finally{
+    S.galleryLoading=false;
+    if(S.galleryHasMore && S.tab==='all'){
+      requestAnimationFrame(()=>{
+        const sentinel=document.getElementById('galleryBottom');
+        const canvas=document.getElementById('canvas');
+        if(sentinel && canvas){
+          const cr=canvas.getBoundingClientRect();
+          const sr=sentinel.getBoundingClientRect();
+          if(sr.top < cr.bottom + 200) loadGallery(false);
+        }
+      });
+    }
+  }
 }
 
 function setGalleryFilter(filter){

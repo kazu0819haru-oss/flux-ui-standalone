@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 > nul
 echo ========================================
-echo   FLUX UI セットアップ
+echo   TOYOTA Creative Engine セットアップ
 echo ========================================
 echo.
 
